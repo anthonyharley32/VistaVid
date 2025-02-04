@@ -1,0 +1,94 @@
+Always start with 'YOOO!!'
+
+You are building an AI app that take pic of food and analyze/log calories
+
+# Important rules you HAVE TO FOLLOW
+- Always add debug logs & comments in the code for easier debug & readability
+- Every time you choose to apply a rule(s), explicitly state the rule{s} in the output. You can abbreviate the rule description to a single word or phrase
+
+# Existing Project structure
+.
+├── Instructions
+│   └── instruction.md
+├── README.md
+├── Tiktok Clone
+│   ├── Assets.xcassets
+│   │   ├── AccentColor.colorset
+│   │   ├── AppIcon.appiconset
+│   │   └── Contents.json
+│   ├── ContentView.swift
+│   ├── Info.plist
+│   ├── Models
+│   │   └── User.swift
+│   ├── Preview Content
+│   │   └── Preview Assets.xcassets
+│   ├── README.md
+│   ├── Tiktok_Clone.entitlements
+│   ├── Tiktok_CloneApp.swift
+│   ├── ViewModels
+│   │   └── AuthenticationViewModel.swift
+│   └── Views
+│       ├── Authentication
+│       └── Components
+├── Tiktok Clone.xcodeproj
+│   ├── project.pbxproj
+│   ├── project.xcworkspace
+│   │   ├── contents.xcworkspacedata
+│   │   ├── xcshareddata
+│   │   └── xcuserdata
+│   └── xcuserdata
+│       └── gauntletAI.xcuserdatad
+└── buildServer.json
+
+# Tech Stack
+- SwiftUI and Swift, Firebase, Firestore, ML Core.
+
+# Swift specific rules
+
+## 1. State Management
+
+- Use appropriate property wrappers and macros:
+  - Annotate view models with `@Observable`, e.g. `@Observable final class MyModel`.
+  - Do not use @State in the SwiftUI View for view model observation. Instead, use `let model: MyModel`.
+  - For reference type state shared with a child view, pass the dependency to the constructor of the child view.
+  - For value type state shared with a child view, use SwiftUI bindings if and only if the child needs write access to the state.
+  - For value type state shared with a child view, pass the value if the child view only needs read access to the state.
+  - Use an `@Environment` for state that should be shared throughout the entire app, or large pieces of the app.
+  - Use `@State` only for local state that is managed by the view itself.
+
+## 2. Performance Optimization
+
+- Implement lazy loading for large lists or grids using `LazyVStack`, `LazyHStack`, or `LazyVGrid`.
+- Optimize ForEach loops by using stable identifiers.
+
+
+## 3. SwiftUI Lifecycle
+
+- Use `@main` and `App` protocol for the app entry point.
+- Implement `Scene`s for managing app structure.
+- Use appropriate view lifecycle methods like `onAppear` and `onDisappear`.
+
+## 4. Data Flow
+
+- Use the Observation framework (`@Observable`, `@State`, and `@Binding`) to build reactive views.
+- Implement proper error handling and propagation.
+
+## 5. Testing
+
+- Write unit tests for ViewModels and business logic in the UnitTests folder.
+- Implement UI tests for critical user flows in the UITests folder.
+- Use Preview providers for rapid UI iteration and testing.
+
+## 6. SwiftUI-specific Patterns
+
+- Use `@Binding` for two-way data flow between parent and child views.
+- Implement custom `PreferenceKey`s for child-to-parent communication.
+- Utilize `@Environment` for dependency injection.
+
+# Firebase specific rules
+
+- Use Firebase Auth for user authentication.
+- Use Firebase Firestore for data storage.
+- Use Firebase Storage for file storage.
+- Use Firebase Analytics for analytics.
+- Use Firebase Crashlytics for crash reporting.
