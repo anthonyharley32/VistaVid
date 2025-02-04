@@ -1,6 +1,14 @@
 Always start with 'YOOO!!'
 
-You are building an AI app that take pic of food and analyze/log calories
+You are building an AI app that is a clone of TikTok.
+
+🔒 LOCKED RULE: When helping with Swift code in Cursor/VS Code:
+- IGNORE all red squiggles related to:
+  - Firebase imports
+  - SwiftUI framework
+  - Any SPM packages
+- Only address actual logic/syntax issues
+- If unsure about an error, I'll ask you if it's a real error or a Cursor lint issue
 
 # Important rules you HAVE TO FOLLOW
 - Always add debug logs & comments in the code for easier debug & readability

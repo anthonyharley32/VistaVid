@@ -1,0 +1,43 @@
+name: VistaVid
+options:
+  bundleIdPrefix: com.vistavid
+  deploymentTarget:
+    iOS: 17.0
+
+packages:
+  Firebase:
+    url: https://github.com/firebase/firebase-ios-sdk.git
+    from: 10.19.0
+
+targets:
+  VistaVid:
+    type: application
+    platform: iOS
+    sources: [VistaVid]
+    dependencies:
+      - package: Firebase
+        product: FirebaseAuth
+      - package: Firebase
+        product: FirebaseFirestore
+      - package: Firebase
+        product: FirebaseStorage
+    settings:
+      base:
+        INFOPLIST_FILE: VistaVid/Info.plist
+        PRODUCT_BUNDLE_IDENTIFIER: com.vistavid.app
+    preBuildScripts:
+      - script: |
+          if which swiftlint >/dev/null; then
+            swiftlint
+          else
+            echo "warning: SwiftLint not installed"
+          fi
+        name: SwiftLint
+    postBuildScripts:
+      - script: |
+          if which swiftlint >/dev/null; then
+            swiftlint --fix
+          else
+            echo "warning: SwiftLint not installed"
+          fi
+        name: SwiftLint Auto Fix 
