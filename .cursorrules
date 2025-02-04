@@ -19,26 +19,25 @@ You are building an AI app that is a clone of TikTok.
 ├── Instructions
 │   └── instruction.md
 ├── README.md
-├── Tiktok Clone
+├── VistaVid
 │   ├── Assets.xcassets
 │   │   ├── AccentColor.colorset
 │   │   ├── AppIcon.appiconset
 │   │   └── Contents.json
 │   ├── ContentView.swift
+│   ├── GoogleService-Info.plist
 │   ├── Info.plist
 │   ├── Models
 │   │   └── User.swift
 │   ├── Preview Content
 │   │   └── Preview Assets.xcassets
-│   ├── README.md
-│   ├── Tiktok_Clone.entitlements
-│   ├── Tiktok_CloneApp.swift
 │   ├── ViewModels
 │   │   └── AuthenticationViewModel.swift
-│   └── Views
-│       ├── Authentication
-│       └── Components
-├── Tiktok Clone.xcodeproj
+│   ├── Views
+│   │   └── Authentication
+│   ├── VistaVid.entitlements
+│   └── VistaVidApp.swift
+├── VistaVid.xcodeproj
 │   ├── project.pbxproj
 │   ├── project.xcworkspace
 │   │   ├── contents.xcworkspacedata
@@ -46,7 +45,9 @@ You are building an AI app that is a clone of TikTok.
 │   │   └── xcuserdata
 │   └── xcuserdata
 │       └── gauntletAI.xcuserdatad
-└── buildServer.json
+├── VistaVidApp.swift
+├── buildServer.json
+└── project.yml
 
 # Tech Stack
 - SwiftUI and Swift, Firebase, Firestore, ML Core.

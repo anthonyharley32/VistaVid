@@ -6,16 +6,23 @@
 //
 
 import SwiftUI
+import FirebaseAuth
 
 struct ContentView: View {
+    @StateObject private var authModel = AuthenticationViewModel()
+    
     var body: some View {
-        VStack {
-            Image(systemName: "globe")
-                .imageScale(.large)
-                .foregroundStyle(.tint)
-            Text("Hello, world!")
+        NavigationView {
+            if authModel.isAuthenticated {
+                MainView(authModel: authModel)
+            } else {
+                SignInView(model: authModel)
+            }
         }
-        .padding()
+        // Debug log for view state changes
+        .onChange(of: authModel.isAuthenticated) { oldValue, newValue in
+            print("DEBUG: User authenticated state changed from: \(oldValue) to: \(newValue)")
+        }
     }
 }
 

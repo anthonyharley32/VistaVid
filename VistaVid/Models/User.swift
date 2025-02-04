@@ -1,14 +1,15 @@
 import Foundation
 import FirebaseAuth
+import FirebaseFirestore
 
 // User model that matches the Firestore data structure
 struct User: Identifiable, Codable {
     // MARK: - Properties
-    let id: String            // FirebaseAuth.uid
-    var username: String
-    var email: String
+    let id: String
+    let username: String
+    let email: String
+    let createdAt: Date
     var profilePicUrl: String?
-    var createdAt: Date
     var isBusiness: Bool
     var selectedAlgorithms: [String]
     
@@ -24,14 +25,46 @@ struct User: Identifiable, Codable {
     }
     
     // MARK: - Initialization
-    init(id: String, username: String, email: String, profilePicUrl: String? = nil, createdAt: Date = Date(), isBusiness: Bool = false, selectedAlgorithms: [String] = []) {
+    init(id: String, username: String, email: String, createdAt: Date, profilePicUrl: String? = nil, isBusiness: Bool = false, selectedAlgorithms: [String] = []) {
         self.id = id
         self.username = username
         self.email = email
-        self.profilePicUrl = profilePicUrl
         self.createdAt = createdAt
+        self.profilePicUrl = profilePicUrl
         self.isBusiness = isBusiness
         self.selectedAlgorithms = selectedAlgorithms
+    }
+    
+    // Create a User from Firebase Auth user
+    static func fromFirebaseUser(_ user: FirebaseAuth.User, username: String) -> User {
+        User(
+            id: user.uid,
+            username: username,
+            email: user.email ?? "",
+            createdAt: Date(),
+            profilePicUrl: user.photoURL?.absoluteString,
+            isBusiness: false,
+            selectedAlgorithms: []
+        )
+    }
+    
+    // Create a User from Firestore data
+    static func fromFirestore(_ data: [String: Any], id: String) -> User? {
+        guard let username = data["username"] as? String,
+              let email = data["email"] as? String,
+              let createdAt = (data["createdAt"] as? Timestamp)?.dateValue() else {
+            return nil
+        }
+        
+        return User(
+            id: id,
+            username: username,
+            email: email,
+            createdAt: createdAt,
+            profilePicUrl: data["profilePicUrl"] as? String,
+            isBusiness: data["isBusiness"] as? Bool ?? false,
+            selectedAlgorithms: data["selectedAlgorithms"] as? [String] ?? []
+        )
     }
 }
 
@@ -39,24 +72,18 @@ struct User: Identifiable, Codable {
 extension User {
     /// Creates a dictionary representation for Firestore
     func toDictionary() -> [String: Any] {
-        return [
-            "userId": id,
+        var data: [String: Any] = [
             "username": username,
             "email": email,
-            "profilePicUrl": profilePicUrl as Any,
-            "createdAt": createdAt,
+            "createdAt": Timestamp(date: createdAt),
             "isBusiness": isBusiness,
             "selectedAlgorithms": selectedAlgorithms
         ]
-    }
-    
-    /// Creates a User from Firebase User
-    static func fromFirebaseUser(_ firebaseUser: FirebaseAuth.User, username: String) -> User {
-        return User(
-            id: firebaseUser.uid,
-            username: username,
-            email: firebaseUser.email ?? "",
-            profilePicUrl: firebaseUser.photoURL?.absoluteString
-        )
+        
+        if let profilePicUrl = profilePicUrl {
+            data["profilePicUrl"] = profilePicUrl
+        }
+        
+        return data
     }
 } 

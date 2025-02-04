@@ -15,6 +15,21 @@ struct SignInView: View {
     var body: some View {
         NavigationStack {
             VStack(spacing: 20) {
+                // Network Status Banner
+                if model.isOffline {
+                    HStack {
+                        Image(systemName: "wifi.slash")
+                        Text("You're offline")
+                        Text("•")
+                        Text("Some features may be limited")
+                    }
+                    .font(.footnote)
+                    .foregroundColor(.white)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 8)
+                    .background(Color.orange.opacity(0.8))
+                }
+                
                 // Logo and Welcome Text
                 VStack(spacing: 10) {
                     Image(systemName: "camera.fill")
@@ -37,9 +52,11 @@ struct SignInView: View {
                         .textFieldStyle(.roundedBorder)
                         .textInputAutocapitalization(.never)
                         .keyboardType(.emailAddress)
+                        .disabled(model.isLoading)
                     
                     SecureField("Password", text: $password)
                         .textFieldStyle(.roundedBorder)
+                        .disabled(model.isLoading)
                 }
                 .padding(.horizontal)
                 .padding(.top, 30)
@@ -60,7 +77,14 @@ struct SignInView: View {
                 .foregroundColor(.white)
                 .cornerRadius(10)
                 .padding(.horizontal)
-                .disabled(model.isLoading)
+                .disabled(model.isLoading || (model.isOffline && !hasValidCredentials))
+                .opacity((model.isOffline && !hasValidCredentials) ? 0.6 : 1.0)
+                
+                if model.isOffline && !hasValidCredentials {
+                    Text("Sign in requires an internet connection")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                }
                 
                 // Sign Up Link
                 Button("Don't have an account? Sign Up") {
@@ -68,6 +92,7 @@ struct SignInView: View {
                 }
                 .foregroundColor(.blue)
                 .padding(.top)
+                .disabled(model.isLoading)
                 
                 Spacer()
             }
@@ -80,6 +105,11 @@ struct SignInView: View {
                 Text(alertMessage)
             }
         }
+    }
+    
+    // MARK: - Computed Properties
+    private var hasValidCredentials: Bool {
+        !email.isEmpty && !password.isEmpty
     }
     
     // MARK: - Actions
