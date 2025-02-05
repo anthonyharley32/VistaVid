@@ -34,7 +34,17 @@ struct ProfileView: View {
                     SignOutButton(model: model, showingAlert: $showingAlert, alertMessage: $alertMessage)
                 }
             }
-            .navigationTitle("Profile")
+            .navigationTitle("You")
+            .toolbar {
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    NavigationLink {
+                        SettingsView(model: model)
+                    } label: {
+                        Image(systemName: "gearshape.fill")
+                            .font(.title2)
+                    }
+                }
+            }
             .alert("Error", isPresented: $showingAlert) {
                 Button("OK", role: .cancel) {}
             } message: {
@@ -569,4 +579,4 @@ struct EditRuleView: View {
             }
         }
     }
-} 
+}
