@@ -48,6 +48,7 @@ struct VistaVidApp: App {
                     SignInView(model: authModel)
                 }
             }
+            .preferredColorScheme(.light)
         }
     }
 }

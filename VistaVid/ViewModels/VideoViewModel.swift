@@ -173,35 +173,51 @@ final class VideoViewModel: ObservableObject {
         defer { isLoading = false }
         
         do {
-            print("📱 [VideoViewModel]: Querying Firestore")
-            let snapshot = try await db.collection("videos")
+            let query = db.collection("videos")
                 .order(by: "createdAt", descending: true)
                 .limit(to: batchSize)
-                .getDocuments()
             
-            print("📱 [VideoViewModel]: Found \(snapshot.documents.count) documents")
+            let snapshot = try await query.getDocuments()
+            var loadedVideos: [Video] = []
             
-            let newVideos = snapshot.documents.compactMap { (document: QueryDocumentSnapshot) -> Video? in
-                print("📱 [VideoViewModel]: Processing document \(document.documentID)")
-                print("📱 [VideoViewModel]: Document data: \(document.data())")
-                
-                guard let video = Video.fromFirestore(document.data(), id: document.documentID) else {
-                    print("📱 [VideoViewModel]: Failed to parse document \(document.documentID)")
-                    return nil
+            for document in snapshot.documents {
+                guard var video = Video.fromFirestore(document.data(), id: document.documentID) else {
+                    debugLog("❌ Failed to parse video document: \(document.documentID)")
+                    continue
                 }
-                print("📱 [VideoViewModel]: Successfully parsed video \(video.id)")
-                return video
+                
+                // Fetch user data for each video
+                video.user = await fetchUserForVideo(video)
+                loadedVideos.append(video)
             }
             
-            await MainActor.run {
-                self.videos = newVideos
-                self.lastDocument = snapshot.documents.last
-                print("📱 [VideoViewModel]: Successfully loaded \(newVideos.count) videos")
-            }
+            videos = loadedVideos
+            lastDocument = snapshot.documents.last
+            debugLog("✅ Successfully loaded videos with user data")
+            
         } catch {
-            print("📱 [VideoViewModel]: Error loading videos: \(error)")
-            print("📱 [VideoViewModel]: Detailed error: \(String(describing: error))")
+            debugLog("❌ Error loading videos: \(error)")
             self.error = error
+        }
+    }
+    
+    private func fetchUserForVideo(_ video: Video) async -> User? {
+        do {
+            let userDoc = try await db.collection("users").document(video.userId).getDocument()
+            guard let userData = userDoc.data() else { return nil }
+            
+            return User(
+                id: video.userId,
+                username: userData["username"] as? String ?? "unknown",
+                email: userData["email"] as? String ?? "",
+                createdAt: (userData["createdAt"] as? Timestamp)?.dateValue() ?? Date(),
+                profilePicUrl: userData["profilePicUrl"] as? String,
+                isBusiness: userData["isBusiness"] as? Bool ?? false,
+                selectedAlgorithms: userData["selectedAlgorithms"] as? [String] ?? []
+            )
+        } catch {
+            debugLog("❌ Error fetching user data: \(error)")
+            return nil
         }
     }
     
@@ -305,12 +321,8 @@ final class VideoViewModel: ObservableObject {
                 debugLog("✅ Successfully unliked video")
             } else {
                 // Like
-                let likeData = [
-                    "userId": currentUser.uid,
-                    "createdAt": FieldValue.serverTimestamp()
-                ] as [String: Any]
-                
-                try await setDocumentData(likeData, for: likeRef)
+                let like = Like(userId: currentUser.uid, videoId: video.id)
+                try await setDocumentData(like.toDictionary(), for: likeRef)
                 try await updateVideoData(["likesCount": FieldValue.increment(Int64(1))], for: videoRef)
                 debugLog("✅ Successfully liked video")
             }
@@ -344,6 +356,26 @@ final class VideoViewModel: ObservableObject {
             return likeDoc.exists
         } catch {
             debugLog("❌ Error checking like status: \(error)")
+            throw error
+        }
+    }
+    
+    func fetchLikes(for video: Video) async throws -> [Like] {
+        debugLog("📥 Fetching likes for video: \(video.id)")
+        do {
+            let snapshot = try await db.collection("videos")
+                .document(video.id)
+                .collection("likes")
+                .getDocuments()
+            
+            let likes = snapshot.documents.compactMap { doc -> Like? in
+                Like.fromFirestore(doc.data(), id: doc.documentID)
+            }
+            
+            debugLog("✅ Successfully fetched \(likes.count) likes")
+            return likes
+        } catch {
+            debugLog("❌ Error fetching likes: \(error)")
             throw error
         }
     }

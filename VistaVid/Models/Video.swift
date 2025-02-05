@@ -5,6 +5,7 @@ struct Video: Identifiable, Codable {
     // MARK: - Properties
     let id: String
     let userId: String
+    var user: User?  // Add user property
     let videoUrl: String
     let thumbnailUrl: String?
     let description: String

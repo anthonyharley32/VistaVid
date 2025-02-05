@@ -4,9 +4,9 @@
 
 [ ] username - the username shown on the video just says @username, fix it so it shows the actual user who posted it's name.
 [ ] profile - the profile picture is not showing up on the feed. havee it so the user who posted the video's profile picture shows up.
-[X] like - 
-[ ] comment
-[ ] share
+[X] like 
+[X] comment
+[X] share
 [ ] press to play/pause
 [ ] remove controls
 

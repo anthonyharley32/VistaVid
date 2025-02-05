@@ -32,7 +32,6 @@ struct FeedView: View {
                                 .offset(y: -geometry.safeAreaInsets.top)
                                 .id(index)
                                 .modifier(VisibilityModifier(index: index, currentVisibleIndex: $visibleIndex))
-                                .preferredColorScheme(.dark)
                         }
                     }
                 }
@@ -162,7 +161,7 @@ struct VideoPlayerView: View {
                         VStack(alignment: .leading, spacing: 10) {
                             // Username and description container
                             VStack(alignment: .leading, spacing: 8) {
-                                Text("@username")
+                                Text("@\(video.user?.username ?? "unknown")")
                                     .foregroundColor(.white)
                                     .font(.system(size: 16, weight: .bold))
                                 
@@ -190,13 +189,45 @@ struct VideoPlayerView: View {
                         // Right side buttons
                         VStack(alignment: .center, spacing: 20) {
                             // Profile picture
-                            Circle()
-                                .fill(Color.gray.opacity(0.5))
-                                .frame(width: 44, height: 44)
-                                .overlay(
-                                    Image(systemName: "person.fill")
-                                        .foregroundColor(.white)
-                                )
+                            if let profilePicUrl = video.user?.profilePicUrl,
+                               let url = URL(string: profilePicUrl) {
+                                AsyncImage(url: url) { phase in
+                                    switch phase {
+                                    case .empty:
+                                        Circle()
+                                            .fill(Color.gray.opacity(0.5))
+                                            .frame(width: 44, height: 44)
+                                            .overlay(
+                                                ProgressView()
+                                                    .foregroundColor(.white)
+                                            )
+                                    case .success(let image):
+                                        image
+                                            .resizable()
+                                            .aspectRatio(contentMode: .fill)
+                                            .frame(width: 44, height: 44)
+                                            .clipShape(Circle())
+                                    case .failure:
+                                        Circle()
+                                            .fill(Color.gray.opacity(0.5))
+                                            .frame(width: 44, height: 44)
+                                            .overlay(
+                                                Image(systemName: "person.fill")
+                                                    .foregroundColor(.white)
+                                            )
+                                    @unknown default:
+                                        EmptyView()
+                                    }
+                                }
+                            } else {
+                                Circle()
+                                    .fill(Color.gray.opacity(0.5))
+                                    .frame(width: 44, height: 44)
+                                    .overlay(
+                                        Image(systemName: "person.fill")
+                                            .foregroundColor(.white)
+                                    )
+                            }
                             
                             // Like button
                             VStack(spacing: 4) {
