@@ -7,7 +7,6 @@ struct MainView: View {
     
     init(authModel: AuthenticationViewModel) {
         self.authModel = authModel
-        // Remove the default tab bar background
         UITabBar.appearance().backgroundColor = .systemBackground
     }
     
@@ -50,6 +49,9 @@ struct MainView: View {
                     .tag(4)
             }
             .tint(.primary)
+            .onReceive(NotificationCenter.default.publisher(for: NSNotification.Name("NavigateToYouTab"))) { _ in
+                selectedTab = 4
+            }
             
             // Floating record button
             Button(action: {

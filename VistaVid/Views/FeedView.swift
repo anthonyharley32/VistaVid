@@ -34,18 +34,45 @@ struct FeedView: View {
                                 .offset(y: -geometry.safeAreaInsets.top)
                                 .id(index)
                                 .modifier(VisibilityModifier(index: index, currentVisibleIndex: $visibleIndex))
-                                .overlay {
-                                    // Invisible button for tap gesture
-                                    Button(action: {
+                                .onTapGesture { location in
+                                    let frame = CGRect(x: 0, y: 0, width: geometry.size.width, height: geometry.size.height)
+                                    
+                                    // Use relative dimensions
+                                    let rightSideWidth = frame.width * 0.2 // 20% of screen width
+                                    let engagementAreaHeight = frame.height * 0.4 // 40% of screen height
+                                    
+                                    // Profile picture area (just above like button)
+                                    let profileStartY = frame.height - engagementAreaHeight // Start of engagement area
+                                    let profileHeight = frame.height * 0.1 // Height for profile picture area
+                                    
+                                    print(" [FeedView]: Tap location - x: \(location.x), y: \(location.y)")
+                                    print(" [FeedView]: Frame - width: \(frame.width), height: \(frame.height)")
+                                    print(" [FeedView]: Profile area - right: \(frame.width - rightSideWidth), y: \(profileStartY)")
+                                    
+                                    // Check tap zones
+                                    let isInEngagementArea = location.x > (frame.width - rightSideWidth) && 
+                                                           location.y > profileStartY
+                                    let isInProfileArea = location.x > (frame.width - rightSideWidth) && 
+                                                        location.y > profileStartY &&
+                                                        location.y < (profileStartY + profileHeight)
+                                    
+                                    print(" [FeedView]: isInProfileArea: \(isInProfileArea)")
+                                    print(" [FeedView]: Current user id: \(String(describing: authModel.currentUser?.id))")
+                                    print(" [FeedView]: Video user id: \(String(describing: video.user?.id))")
+                                    
+                                    if isInProfileArea {
+                                        // Navigate to You tab
+                                        if video.user?.id == authModel.currentUser?.id {
+                                            print(" [FeedView]: Navigating to You tab")
+                                            NotificationCenter.default.post(name: NSNotification.Name("NavigateToYouTab"), object: nil)
+                                        }
+                                    } else if !isInEngagementArea {
                                         isPaused.toggle()
-                                        // Notify the VideoPlayerView
                                         NotificationCenter.default.post(
                                             name: NSNotification.Name("TogglePlayback"),
                                             object: nil,
                                             userInfo: ["videoId": video.id]
                                         )
-                                    }) {
-                                        Color.clear
                                     }
                                 }
                         }
@@ -54,7 +81,7 @@ struct FeedView: View {
                 .scrollTargetBehavior(.paging)
                 .scrollPosition(id: $currentIndex)
                 .onChange(of: visibleIndex) { oldValue, newValue in
-                    print("📱 [FeedView]: Visible index changed from \(String(describing: oldValue)) to \(String(describing: newValue))")
+                    print(" [FeedView]: Visible index changed from \(String(describing: oldValue)) to \(String(describing: newValue))")
                     if let index = newValue {
                         videoManager.pauseAllExcept(index: index)
                     } else {
@@ -106,7 +133,7 @@ struct VideoCell: View {
                 .padding()
         }
         .onAppear {
-            print("📱 [VideoCell]: Loading video cell for \(video.id)")
+            print(" [VideoCell]: Loading video cell for \(video.id)")
         }
     }
 }
@@ -154,10 +181,10 @@ struct VideoPlayerView: View {
                     CustomVideoPlayer(player: player)
                         .frame(width: geometry.size.width, height: UIScreen.main.bounds.height)
                         .onAppear {
-                            print("📱 [VideoPlayerView \(index)]: Player view appeared, isVisible: \(isVisible)")
+                            print(" [VideoPlayerView \(index)]: Player view appeared, isVisible: \(isVisible)")
                         }
                         .onDisappear {
-                            print("📱 [VideoPlayerView \(index)]: Player view disappeared")
+                            print(" [VideoPlayerView \(index)]: Player view disappeared")
                             cleanupPlayer()
                         }
                 }
@@ -296,7 +323,7 @@ struct VideoPlayerView: View {
         }
         .ignoresSafeArea()
         .onChange(of: isVisible) { oldValue, newValue in
-            print("📱 [VideoPlayerView \(index)]: Visibility changed: \(oldValue) -> \(newValue)")
+            print(" [VideoPlayerView \(index)]: Visibility changed: \(oldValue) -> \(newValue)")
             Task {
                 if newValue {
                     await initializePlayerIfNeeded()
@@ -306,7 +333,7 @@ struct VideoPlayerView: View {
             }
         }
         .onAppear {
-            print("📱 [VideoPlayerView \(index)]: View appeared, isVisible: \(isVisible)")
+            print(" [VideoPlayerView \(index)]: View appeared, isVisible: \(isVisible)")
             if isVisible {
                 Task {
                     await initializePlayerIfNeeded()
@@ -314,7 +341,7 @@ struct VideoPlayerView: View {
             }
         }
         .onDisappear {
-            print("📱 [VideoPlayerView \(index)]: View disappeared")
+            print(" [VideoPlayerView \(index)]: View disappeared")
             cleanupPlayer()
         }
         .sheet(isPresented: $showComments) {
@@ -333,23 +360,23 @@ struct VideoPlayerView: View {
     }
     
     private func initializePlayerIfNeeded() async {
-        print("📱 [VideoPlayerView \(index)]: START Initializing player, current player exists: \(player != nil)")
+        print(" [VideoPlayerView \(index)]: START Initializing player, current player exists: \(player != nil)")
         guard player == nil, let videoURL = video.url else { return }
         
         isLoading = true
         defer { isLoading = false }
         
         do {
-            print("📱 [VideoPlayerView \(index)]: Creating new player")
+            print(" [VideoPlayerView \(index)]: Creating new player")
             let asset = AVURLAsset(url: videoURL)
             
             // Wait for asset to load
-            print("📱 [VideoPlayerView \(index)]: Loading asset")
+            print(" [VideoPlayerView \(index)]: Loading asset")
             _ = try await asset.load(.isPlayable)
             
             // Only proceed if still visible
             guard isVisible else {
-                print("📱 [VideoPlayerView \(index)]: No longer visible during initialization")
+                print(" [VideoPlayerView \(index)]: No longer visible during initialization")
                 return
             }
             
@@ -363,28 +390,28 @@ struct VideoPlayerView: View {
             
             // Final visibility check before committing
             if isVisible {
-                print("📱 [VideoPlayerView \(index)]: Setting up new player")
+                print(" [VideoPlayerView \(index)]: Setting up new player")
                 player = newPlayer
                 videoManager.register(player: newPlayer, for: index)
                 newPlayer.play()
                 isPlaying = true
             } else {
-                print("📱 [VideoPlayerView \(index)]: Lost visibility during final setup")
+                print(" [VideoPlayerView \(index)]: Lost visibility during final setup")
                 newPlayer.pause()
                 playerLooper?.disableLooping()
             }
         } catch {
-            print("📱 [VideoPlayerView \(index)]: Failed to initialize player: \(error)")
+            print(" [VideoPlayerView \(index)]: Failed to initialize player: \(error)")
         }
         
-        print("📱 [VideoPlayerView \(index)]: END Initializing player")
+        print(" [VideoPlayerView \(index)]: END Initializing player")
     }
     
     private func cleanupPlayer() {
-        print("📱 [VideoPlayerView \(index)]: START Cleanup, player exists: \(player != nil)")
+        print(" [VideoPlayerView \(index)]: START Cleanup, player exists: \(player != nil)")
         
         if let currentPlayer = player {
-            print("📱 [VideoPlayerView \(index)]: Pausing and cleaning up player")
+            print(" [VideoPlayerView \(index)]: Pausing and cleaning up player")
             currentPlayer.pause()
             currentPlayer.removeAllItems()
             playerLooper?.disableLooping()
@@ -394,7 +421,7 @@ struct VideoPlayerView: View {
             isPlaying = false
         }
         
-        print("📱 [VideoPlayerView \(index)]: END Cleanup")
+        print(" [VideoPlayerView \(index)]: END Cleanup")
     }
     
     private func handlePlayPause() {
@@ -419,7 +446,7 @@ struct VideoPlayerView: View {
             }
         }
         
-        print("📱 [VideoPlayerView]: Video playback toggled to \(isPlaying ? "playing" : "paused")")
+        print(" [VideoPlayerView]: Video playback toggled to \(isPlaying ? "playing" : "paused")")
     }
     
     private func handleLike() {
@@ -463,9 +490,9 @@ final class VideoPlayerManager: ObservableObject {
     private var timeObserverTokens: [Int: Any] = [:]
     
     func register(player: AVQueuePlayer, for index: Int) {
-        print("📱 [VideoPlayerManager]: START Registering player for index: \(index)")
-        print("📱 [VideoPlayerManager]: Current active players: \(players.keys.sorted())")
-        print("📱 [VideoPlayerManager]: Current index: \(String(describing: currentIndex))")
+        print(" [VideoPlayerManager]: START Registering player for index: \(index)")
+        print(" [VideoPlayerManager]: Current active players: \(players.keys.sorted())")
+        print(" [VideoPlayerManager]: Current index before: \(String(describing: currentIndex))")
         
         // Remove any existing player for this index
         unregister(index: index)
@@ -476,13 +503,13 @@ final class VideoPlayerManager: ObservableObject {
             queue: .main
         ) { [weak player] _ in
             guard let player = player else {
-                print("📱 [VideoPlayerManager]: Player \(index) was deallocated")
+                print(" [VideoPlayerManager]: Player \(index) was deallocated")
                 return
             }
             
-            print("📱 [VideoPlayerManager]: Player \(index) status - Rate: \(player.rate), Time Control Status: \(player.timeControlStatus.rawValue)")
+            print(" [VideoPlayerManager]: Player \(index) status - Rate: \(player.rate), Time Control Status: \(player.timeControlStatus.rawValue)")
             if player.timeControlStatus == .playing {
-                print("📱 [VideoPlayerManager]: Player \(index) is actively playing")
+                print(" [VideoPlayerManager]: Player \(index) is actively playing")
             }
         }
         
@@ -490,70 +517,70 @@ final class VideoPlayerManager: ObservableObject {
         players[index] = player
         timeObserverTokens[index] = timeObserver
         
-        print("📱 [VideoPlayerManager]: END Registering player for index: \(index)")
-        print("📱 [VideoPlayerManager]: Updated active players: \(players.keys.sorted())")
+        print(" [VideoPlayerManager]: END Registering player for index: \(index)")
+        print(" [VideoPlayerManager]: Updated active players: \(players.keys.sorted())")
     }
     
     func unregister(index: Int) {
-        print("📱 [VideoPlayerManager]: START Unregistering player for index: \(index)")
-        print("📱 [VideoPlayerManager]: Current active players before unregister: \(players.keys.sorted())")
+        print(" [VideoPlayerManager]: START Unregistering player for index: \(index)")
+        print(" [VideoPlayerManager]: Current active players before unregister: \(players.keys.sorted())")
         
         if let player = players[index] {
-            print("📱 [VideoPlayerManager]: Found player for index \(index)")
+            print(" [VideoPlayerManager]: Found player for index \(index)")
             // Remove time observer
             if let token = timeObserverTokens[index] {
-                print("📱 [VideoPlayerManager]: Removing time observer for index \(index)")
+                print(" [VideoPlayerManager]: Removing time observer for index \(index)")
                 player.removeTimeObserver(token)
                 timeObserverTokens.removeValue(forKey: index)
             }
             
             // Cleanup player
-            print("📱 [VideoPlayerManager]: Pausing player \(index)")
+            print(" [VideoPlayerManager]: Pausing player \(index)")
             player.pause()
-            print("📱 [VideoPlayerManager]: Clearing items for player \(index)")
+            print(" [VideoPlayerManager]: Clearing items for player \(index)")
             player.replaceCurrentItem(with: nil)
             player.removeAllItems()
         } else {
-            print("📱 [VideoPlayerManager]: No player found for index \(index)")
+            print(" [VideoPlayerManager]: No player found for index \(index)")
         }
         
         players.removeValue(forKey: index)
         
         if currentIndex == index {
-            print("📱 [VideoPlayerManager]: Clearing current index \(index)")
+            print(" [VideoPlayerManager]: Clearing current index \(index)")
             currentIndex = nil
         }
         
-        print("📱 [VideoPlayerManager]: END Unregistering player for index: \(index)")
-        print("📱 [VideoPlayerManager]: Remaining active players: \(players.keys.sorted())")
+        print(" [VideoPlayerManager]: END Unregistering player for index: \(index)")
+        print(" [VideoPlayerManager]: Remaining active players: \(players.keys.sorted())")
     }
     
     func pauseAllExcept(index: Int) {
-        print("📱 [VideoPlayerManager]: START PauseAllExcept index: \(index)")
-        print("📱 [VideoPlayerManager]: Current active players: \(players.keys.sorted())")
-        print("📱 [VideoPlayerManager]: Current index before: \(String(describing: currentIndex))")
+        print(" [VideoPlayerManager]: START PauseAllExcept index: \(index)")
+        print(" [VideoPlayerManager]: Current active players: \(players.keys.sorted())")
+        print(" [VideoPlayerManager]: Current index before: \(String(describing: currentIndex))")
         
         // First, cleanup all players except the target index
         let playersToRemove = players.keys.filter { $0 != index }
         for playerIndex in playersToRemove {
-            print("📱 [VideoPlayerManager]: Force cleaning up player \(playerIndex)")
+            print(" [VideoPlayerManager]: Force cleaning up player \(playerIndex)")
             unregister(index: playerIndex)
         }
         
         // Now handle the current player
         if let player = players[index] {
-            print("📱 [VideoPlayerManager]: Setting up current player \(index)")
+            print(" [VideoPlayerManager]: Setting up current player \(index)")
             player.seek(to: .zero)
             player.play()
             currentIndex = index
         }
         
-        print("📱 [VideoPlayerManager]: END PauseAllExcept - Current index after: \(String(describing: currentIndex))")
-        print("📱 [VideoPlayerManager]: Final active players: \(players.keys.sorted())")
+        print(" [VideoPlayerManager]: END PauseAllExcept - Current index after: \(String(describing: currentIndex))")
+        print(" [VideoPlayerManager]: Final active players: \(players.keys.sorted())")
     }
     
     func cleanup() {
-        print("📱 [VideoPlayerManager]: Cleaning up all players")
+        print(" [VideoPlayerManager]: Cleaning up all players")
         
         // Remove all time observers and cleanup players
         for (index, player) in players {
