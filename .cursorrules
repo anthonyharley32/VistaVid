@@ -23,7 +23,8 @@ You are building an AI app that is a clone of TikTok.
 │   ├── Assets.xcassets
 │   │   ├── AccentColor.colorset
 │   │   ├── AppIcon.appiconset
-│   │   └── Contents.json
+│   │   ├── Contents.json
+│   │   └── Logo.imageset
 │   ├── ContentView.swift
 │   ├── GoogleService-Info.plist
 │   ├── Info.plist
@@ -52,7 +53,9 @@ You are building an AI app that is a clone of TikTok.
 │   └── xcuserdata
 │       └── gauntletAI.xcuserdatad
 ├── buildServer.json
-└── project.yml
+├── project.yml
+└── todo
+    └── todo.md
 
 # Tech Stack
 - SwiftUI and Swift, Firebase, Firestore, ML Core.

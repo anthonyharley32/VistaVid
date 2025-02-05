@@ -116,32 +116,84 @@ struct VideoPlayerView: View {
             }
             
             // Video Info Overlay
-            VStack {
-                Spacer()
-                HStack {
-                    // Video Description
-                    VStack(alignment: .leading, spacing: 8) {
-                        Text(video.description)
-                            .foregroundColor(.white)
-                            .font(.system(size: 16, weight: .semibold))
-                            .shadow(radius: 2)
-                        
-                        // Tags
-                        if !video.algorithmTags.isEmpty {
-                            HStack {
-                                ForEach(video.algorithmTags, id: \.self) { tag in
-                                    Text("#\(tag)")
-                                        .foregroundColor(.white)
-                                        .font(.system(size: 14, weight: .medium))
-                                        .shadow(radius: 2)
+            ZStack(alignment: .bottom) {
+                // Left side content (username and description)
+                HStack(alignment: .bottom) {
+                    // Description and username
+                    VStack(alignment: .leading, spacing: 10) {
+                        // Username and description container
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text("@username")
+                                .foregroundColor(.white)
+                                .font(.system(size: 16, weight: .bold))
+                            
+                            Text(video.description)
+                                .foregroundColor(.white)
+                                .font(.system(size: 14))
+                            
+                            if !video.algorithmTags.isEmpty {
+                                HStack(spacing: 5) {
+                                    ForEach(video.algorithmTags, id: \.self) { tag in
+                                        Text("#\(tag)")
+                                            .foregroundColor(.white)
+                                            .font(.system(size: 14, weight: .semibold))
+                                    }
                                 }
                             }
                         }
+                        .shadow(color: .black.opacity(0.3), radius: 3)
                     }
-                    Spacer()
+                    .padding(.leading, 16)
+                    .padding(.bottom, 100)
+                    
+                    Spacer(minLength: 80) // Force spacing between description and buttons
+                    
+                    // Right side buttons
+                    VStack(alignment: .center, spacing: 20) {
+                        // Profile picture
+                        Circle()
+                            .fill(Color.gray.opacity(0.5))
+                            .frame(width: 44, height: 44)
+                            .overlay(
+                                Image(systemName: "person.fill")
+                                    .foregroundColor(.white)
+                            )
+                        
+                        // Like button
+                        VStack(spacing: 4) {
+                            Image(systemName: "heart.fill")
+                                .font(.system(size: 30))
+                                .foregroundColor(.white)
+                            Text("0")
+                                .foregroundColor(.white)
+                                .font(.system(size: 12))
+                        }
+                        
+                        // Comment button
+                        VStack(spacing: 4) {
+                            Image(systemName: "bubble.right.fill")
+                                .font(.system(size: 30))
+                                .foregroundColor(.white)
+                            Text("0")
+                                .foregroundColor(.white)
+                                .font(.system(size: 12))
+                        }
+                        
+                        // Share button
+                        VStack(spacing: 4) {
+                            Image(systemName: "arrowshape.turn.up.right.fill")
+                                .font(.system(size: 30))
+                                .foregroundColor(.white)
+                            Text("Share")
+                                .foregroundColor(.white)
+                                .font(.system(size: 12))
+                        }
+                    }
+                    .padding(.trailing, 16)
+                    .padding(.bottom, 100)
                 }
-                .padding()
             }
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottom)
         }
         .onAppear {
             // Initialize player when view appears
