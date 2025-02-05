@@ -1,12 +1,12 @@
 import SwiftUI
 
 struct MainView: View {
-    @StateObject private var authModel: AuthenticationViewModel
+    @ObservedObject var authModel: AuthenticationViewModel
     @State private var selectedTab = 0
     @State private var showingCamera = false
     
     init(authModel: AuthenticationViewModel) {
-        _authModel = StateObject(wrappedValue: authModel)
+        self.authModel = authModel
     }
     
     var body: some View {
@@ -14,8 +14,7 @@ struct MainView: View {
             // Feed Tab
             FeedView(authModel: authModel)
                 .tabItem {
-                    Image(systemName: selectedTab == 0 ? "play.circle.fill" : "play.circle")
-                    Text("Feed")
+                    Label("Feed", systemImage: "play.rectangle.fill")
                 }
                 .tag(0)
             
@@ -23,29 +22,23 @@ struct MainView: View {
             Button(action: {
                 showingCamera = true
             }) {
-                Color.black
-                    .overlay(
-                        Image(systemName: "camera.circle.fill")
-                            .font(.system(size: 30))
-                            .foregroundColor(.white)
-                    )
+                Image(systemName: "plus.circle.fill")
+                    .font(.system(size: 44))
             }
             .tabItem {
-                Image(systemName: selectedTab == 1 ? "camera.circle.fill" : "camera.circle")
-                Text("Record")
+                Label("Record", systemImage: "plus.circle.fill")
             }
             .tag(1)
             
             // Profile Tab
             ProfileView(model: authModel)
                 .tabItem {
-                    Image(systemName: selectedTab == 2 ? "person.circle.fill" : "person.circle")
-                    Text("Profile")
+                    Label("Profile", systemImage: "person.fill")
                 }
                 .tag(2)
         }
         .tint(.primary)
-        .fullScreenCover(isPresented: $showingCamera) {
+        .sheet(isPresented: $showingCamera) {
             RecordingView()
         }
     }

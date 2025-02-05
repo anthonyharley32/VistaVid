@@ -122,6 +122,9 @@ struct RecordingView: View {
                                         showingDescriptionSheet = false
                                         description = ""
                                         selectedAlgorithmTags = []
+                                        
+                                        // Stop the camera before dismissing
+                                        await cameraManager.cleanupCamera()
                                         dismiss() // Dismiss the camera view after successful upload
                                     } catch {
                                         print("Error uploading video: \(error)")
@@ -155,8 +158,8 @@ struct RecordingView: View {
         }
         .onDisappear {
             print("🎥 [RecordingView]: View disappeared, cleaning up")
-            if let session = cameraManager.captureSession {
-                session.stopRunning()
+            Task { @MainActor in
+                await cameraManager.cleanupCamera()
             }
         }
     }
@@ -209,6 +212,7 @@ final class CameraManager: NSObject, ObservableObject {
     private var currentCamera: AVCaptureDevice?
     private var recordingTimer: Timer?
     private var recordingStartTime: Date?
+    private let sessionQueue = DispatchQueue(label: "com.vistavid.camera.session")
     
     override init() {
         super.init()
@@ -217,19 +221,46 @@ final class CameraManager: NSObject, ObservableObject {
     
     deinit {
         print("🎥 [CameraManager]: Deinitializing")
-        Task { @MainActor in
-            await cleanup()
+        // Using Task.detached to avoid capturing self in closure
+        Task.detached { [captureSession] in
+            captureSession?.stopRunning()
         }
     }
     
-    private func cleanup() async {
-        print("🎥 [CameraManager]: Cleaning up resources")
-        recordingTimer?.invalidate()
-        recordingTimer = nil
+    // MARK: - Cleanup Methods
+    
+    /// Public method to cleanup camera resources
+    public func cleanupCamera() async {
+        print("🎥 [CameraManager]: Starting cleanup")
+        
+        // Stop recording if active
         if isRecording {
             stopRecording()
         }
-        captureSession?.stopRunning()
+        
+        // Stop session on background queue
+        await Task.detached { [weak captureSession] in
+            captureSession?.stopRunning()
+        }.value
+        
+        // Cleanup on main actor
+        await MainActor.run { [weak self] in
+            guard let self = self else { return }
+            
+            // Cleanup timer
+            self.recordingTimer?.invalidate()
+            self.recordingTimer = nil
+            
+            // Clear references
+            self.previewLayer = nil
+            self.videoOutput = nil
+            self.frontCamera = nil
+            self.backCamera = nil
+            self.currentCamera = nil
+            self.captureSession = nil
+            
+            print("🎥 [CameraManager]: Cleanup completed")
+        }
     }
     
     // MARK: - Setup Methods

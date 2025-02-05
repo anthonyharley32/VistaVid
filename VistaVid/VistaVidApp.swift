@@ -26,7 +26,7 @@ struct VistaVidApp: App {
         print("📱 App name: \(Bundle.main.object(forInfoDictionaryKey: "CFBundleName") as? String ?? "Unknown")")
         
         // Initialize Firestore
-        let _ = Firestore.firestore()
+        _ = Firestore.firestore()
         print("📚 Firestore instance created")
         
         // Debug current user state

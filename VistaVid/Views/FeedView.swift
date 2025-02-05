@@ -2,62 +2,91 @@ import SwiftUI
 import AVKit
 
 struct FeedView: View {
-    // MARK: - Properties
+    @StateObject private var viewModel = VideoViewModel()
+    @StateObject private var videoManager = VideoPlayerManager()
+    @State private var currentIndex: Int?
     @ObservedObject var authModel: AuthenticationViewModel
-    @StateObject private var videoModel = VideoViewModel()
-    @State private var currentVideoIndex = 0
     
-    // MARK: - Body
+    init(authModel: AuthenticationViewModel) {
+        self.authModel = authModel
+    }
+    
     var body: some View {
-        NavigationView {
-            ZStack {
-                // Background color
-                Color.black.edgesIgnoringSafeArea(.all)
-                
-                if videoModel.isLoading && videoModel.videos.isEmpty {
-                    // Loading state
-                    ProgressView()
-                        .progressViewStyle(CircularProgressViewStyle(tint: .white))
-                } else if videoModel.videos.isEmpty {
-                    // Empty state
-                    VStack(spacing: 16) {
-                        Image(systemName: "video.fill")
-                            .font(.system(size: 48))
-                            .foregroundColor(.gray)
-                        Text("No Videos Yet")
-                            .font(.title2)
-                            .foregroundColor(.white)
-                        Text("Videos you upload will appear here")
-                            .font(.subheadline)
-                            .foregroundColor(.gray)
+        GeometryReader { geometry in
+            if viewModel.isLoading {
+                ProgressView()
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .onAppear {
+                        print("📱 [FeedView]: Showing loading indicator")
                     }
-                } else {
-                    // Video feed
-                    ScrollView {
-                        LazyVStack(spacing: 0) {
-                            ForEach(videoModel.videos) { video in
-                                VideoPlayerView(video: video)
-                                    .frame(height: UIScreen.main.bounds.height)
-                                    .onAppear {
-                                        // Load more videos when reaching end
-                                        if video.id == videoModel.videos.last?.id {
-                                            Task {
-                                                await videoModel.fetchNextBatch()
-                                            }
-                                        }
-                                    }
-                            }
+            } else if viewModel.videos.isEmpty {
+                Text("No videos available")
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .onAppear {
+                        print("📱 [FeedView]: No videos to display")
+                    }
+            } else {
+                ScrollView(.vertical, showsIndicators: false) {
+                    LazyVStack(spacing: 0) {
+                        ForEach(Array(viewModel.videos.enumerated()), id: \.element.id) { index, video in
+                            VideoPlayerView(video: video, index: index, videoManager: videoManager)
+                                .frame(width: geometry.size.width, height: geometry.size.height)
+                                .id(index)
                         }
                     }
-                    .scrollIndicators(.hidden)
+                }
+                .scrollTargetBehavior(.paging)
+                .scrollPosition(id: $currentIndex)
+                .onChange(of: currentIndex) { oldValue, newValue in
+                    print("📱 [FeedView]: Scrolled to video index: \(String(describing: newValue))")
+                    // Pause all videos except the current one
+                    if let index = newValue {
+                        videoManager.pauseAllExcept(index: index)
+                    }
+                }
+                .ignoresSafeArea()
+                .statusBar(hidden: true)
+            }
+        }
+        .ignoresSafeArea()
+        .onAppear {
+            print("📱 [FeedView]: View appeared")
+            Task {
+                print("📱 [FeedView]: Loading videos")
+                await viewModel.loadVideos()
+            }
+        }
+    }
+}
+
+struct VideoCell: View {
+    let video: Video
+    
+    var body: some View {
+        VStack {
+            if let url = video.url {
+                AsyncImage(url: url) { phase in
+                    switch phase {
+                    case .empty:
+                        ProgressView()
+                    case .success(let image):
+                        image
+                            .resizable()
+                            .aspectRatio(contentMode: .fit)
+                    case .failure:
+                        Image(systemName: "video.slash.fill")
+                            .font(.largeTitle)
+                    @unknown default:
+                        EmptyView()
+                    }
                 }
             }
-            .navigationTitle("Feed")
-            .navigationBarTitleDisplayMode(.inline)
-            .task {
-                // Load initial videos
-                await videoModel.fetchInitialVideos()
-            }
+            
+            Text(video.description)
+                .padding()
+        }
+        .onAppear {
+            print("📱 [VideoCell]: Loading video cell for \(video.id)")
         }
     }
 }
@@ -65,94 +94,95 @@ struct FeedView: View {
 // MARK: - Video Player View
 struct VideoPlayerView: View {
     let video: Video
-    @State private var player: AVPlayer?
+    let index: Int
+    let videoManager: VideoPlayerManager
+    
     @State private var isPlaying = false
+    @State private var player: AVPlayer?
     
     var body: some View {
         ZStack {
             if let player = player {
                 VideoPlayer(player: player)
                     .onAppear {
+                        print("📱 [VideoPlayerView]: Video player appeared for index: \(index)")
+                        videoManager.register(player: player, for: index)
                         player.play()
-                        isPlaying = true
                     }
                     .onDisappear {
+                        print("📱 [VideoPlayerView]: Video player disappeared for index: \(index)")
                         player.pause()
-                        isPlaying = false
                     }
-            } else {
-                // Thumbnail or loading state
-                Color.black
-                ProgressView()
-                    .progressViewStyle(CircularProgressViewStyle(tint: .white))
             }
             
-            // Video controls overlay
+            // Video Info Overlay
             VStack {
                 Spacer()
-                
-                // Video info
-                HStack(alignment: .bottom) {
+                HStack {
+                    // Video Description
                     VStack(alignment: .leading, spacing: 8) {
                         Text(video.description)
                             .foregroundColor(.white)
                             .font(.system(size: 16, weight: .semibold))
+                            .shadow(radius: 2)
                         
-                        // Algorithm tags
-                        ScrollView(.horizontal, showsIndicators: false) {
+                        // Tags
+                        if !video.algorithmTags.isEmpty {
                             HStack {
                                 ForEach(video.algorithmTags, id: \.self) { tag in
                                     Text("#\(tag)")
-                                        .foregroundColor(.blue)
-                                        .font(.system(size: 14))
+                                        .foregroundColor(.white)
+                                        .font(.system(size: 14, weight: .medium))
+                                        .shadow(radius: 2)
                                 }
                             }
                         }
                     }
-                    .padding()
-                    
                     Spacer()
-                    
-                    // Interaction buttons
-                    VStack(spacing: 20) {
-                        Button(action: { /* Like action */ }) {
-                            VStack {
-                                Image(systemName: "heart.fill")
-                                    .font(.system(size: 28))
-                                Text("\(video.likesCount)")
-                                    .font(.caption)
-                            }
-                        }
-                        
-                        Button(action: { /* Comment action */ }) {
-                            VStack {
-                                Image(systemName: "bubble.right.fill")
-                                    .font(.system(size: 28))
-                                Text("\(video.commentsCount)")
-                                    .font(.caption)
-                            }
-                        }
-                        
-                        Button(action: { /* Share action */ }) {
-                            VStack {
-                                Image(systemName: "square.and.arrow.up.fill")
-                                    .font(.system(size: 28))
-                                Text("\(video.sharesCount)")
-                                    .font(.caption)
-                            }
-                        }
-                    }
-                    .foregroundColor(.white)
-                    .padding(.trailing)
                 }
-                .padding(.bottom, 30)
+                .padding()
             }
         }
         .onAppear {
             // Initialize player when view appears
-            if player == nil {
-                player = AVPlayer(url: URL(string: video.videoUrl)!)
+            if player == nil, let videoURL = video.url {
+                print("📱 [VideoPlayerView]: Initializing player for video: \(video.id)")
+                player = AVPlayer(url: videoURL)
             }
         }
     }
+}
+
+// MARK: - Video Player Manager
+@MainActor
+final class VideoPlayerManager: ObservableObject {
+    private var players: [Int: AVPlayer] = [:]
+    
+    func register(player: AVPlayer, for index: Int) {
+        print("📱 [VideoPlayerManager]: Registering player for index: \(index)")
+        players[index] = player
+    }
+    
+    func pauseAllExcept(index: Int) {
+        print("📱 [VideoPlayerManager]: Pausing all players except index: \(index)")
+        for (playerIndex, player) in players {
+            if playerIndex != index {
+                player.pause()
+            } else {
+                player.play()
+            }
+        }
+    }
+    
+    func cleanup() {
+        print("📱 [VideoPlayerManager]: Cleaning up all players")
+        players.values.forEach { player in
+            player.pause()
+        }
+        players.removeAll()
+    }
+}
+
+#Preview {
+    FeedView(authModel: AuthenticationViewModel())
 } 
