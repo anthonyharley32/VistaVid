@@ -4,10 +4,12 @@ import AVFoundation
 struct RecordingView: View {
     // MARK: - Properties
     @StateObject private var cameraManager = CameraManager()
-    @Environment(\.dismiss) private var dismiss
     @State private var showingDescriptionSheet = false
     @State private var description = ""
     @State private var selectedAlgorithmTags: [String] = []
+    @Environment(\.scenePhase) private var scenePhase
+    @Environment(\.dismiss) private var dismiss
+    @Environment(\.presentationMode) private var presentationMode
     
     // MARK: - Body
     var body: some View {
@@ -30,16 +32,23 @@ struct RecordingView: View {
                 
                 // Close button
                 VStack {
-                    HStack {
+                    GeometryReader { geo in
                         Button(action: {
+                            print("🎥 [RecordingView]: Close button tapped")
+                            // First dismiss the view
                             dismiss()
+                            // Then cleanup camera
+                            Task { @MainActor in
+                                print("🎥 [RecordingView]: Starting camera cleanup after dismiss")
+                                await cameraManager.cleanupCamera()
+                            }
                         }) {
-                            Image(systemName: "xmark.circle.fill")
-                                .font(.system(size: 30))
+                            Image(systemName: "xmark")
+                                .font(.system(size: 24, weight: .semibold))
                                 .foregroundColor(.white)
-                                .padding()
+                                .frame(width: 44, height: 44) // Larger touch target
                         }
-                        Spacer()
+                        .position(x: 60, y: 60) // Position from top-left corner without safe area
                     }
                     Spacer()
                     
@@ -51,46 +60,54 @@ struct RecordingView: View {
                                 .foregroundColor(.white)
                         }
                         
-                        HStack(spacing: 50) {
-                            // Flip camera button
-                            Button(action: { cameraManager.flipCamera() }) {
-                                Image(systemName: "camera.rotate.fill")
-                                    .font(.system(size: 30))
-                                    .foregroundColor(.white)
-                            }
-                            
-                            // Record button
-                            Button(action: {
-                                if cameraManager.isRecording {
+                        // Record button
+                        Button(action: {
+                            if cameraManager.isRecording {
+                                Task {
                                     cameraManager.stopRecording()
                                     showingDescriptionSheet = true
-                                } else {
-                                    cameraManager.startRecording()
                                 }
-                            }) {
-                                Circle()
-                                    .fill(cameraManager.isRecording ? .red : .white)
-                                    .frame(width: 80, height: 80)
-                                    .overlay(
-                                        Circle()
-                                            .stroke(Color.white, lineWidth: 4)
-                                            .frame(width: 70, height: 70)
-                                    )
+                            } else {
+                                cameraManager.startRecording()
                             }
-                            
-                            // Settings button (placeholder for future features)
-                            Button(action: { /* TODO: Add settings */ }) {
-                                Image(systemName: "gear")
-                                    .font(.system(size: 30))
-                                    .foregroundColor(.white)
-                            }
+                        }) {
+                            Circle()
+                                .fill(cameraManager.isRecording ? Color.red : Color.white)
+                                .frame(width: 80, height: 80)
+                                .overlay(
+                                    Circle()
+                                        .stroke(Color.white, lineWidth: 4)
+                                        .frame(width: 70, height: 70)
+                                )
                         }
                     }
-                    .padding(.bottom, 50)
+                    .padding(.bottom, 30)
                 }
             }
         }
         .ignoresSafeArea()
+        .statusBar(hidden: true) // Hide status bar
+        .task {
+            print("🎥 [RecordingView]: View appeared, initializing camera")
+            await MainActor.run {
+                cameraManager.checkPermissions()
+                cameraManager.setupCamera()
+            }
+        }
+        .onChange(of: scenePhase, { _, newPhase in
+            if newPhase == .active {
+                print("🎥 [RecordingView]: Scene became active")
+                Task { @MainActor in
+                    cameraManager.checkPermissions()
+                    cameraManager.setupCamera()
+                }
+            } else if newPhase == .background {
+                print("🎥 [RecordingView]: Scene went to background")
+                Task { @MainActor in
+                    await cameraManager.cleanupCamera()
+                }
+            }
+        })
         .sheet(isPresented: $showingDescriptionSheet) {
             NavigationView {
                 Form {
@@ -147,19 +164,6 @@ struct RecordingView: View {
                         }
                     }
                 }
-            }
-        }
-        .task {
-            print("🎥 [RecordingView]: View appeared, initializing camera")
-            await MainActor.run {
-                cameraManager.checkPermissions()
-                cameraManager.setupCamera()
-            }
-        }
-        .onDisappear {
-            print("🎥 [RecordingView]: View disappeared, cleaning up")
-            Task { @MainActor in
-                await cameraManager.cleanupCamera()
             }
         }
     }
@@ -235,23 +239,27 @@ final class CameraManager: NSObject, ObservableObject {
         
         // Stop recording if active
         if isRecording {
+            print("🎥 [CameraManager]: Stopping active recording")
             stopRecording()
         }
         
         // Stop session on background queue
         await Task.detached { [weak captureSession] in
+            print("🎥 [CameraManager]: Stopping capture session")
             captureSession?.stopRunning()
         }.value
         
         // Cleanup on main actor
         await MainActor.run { [weak self] in
             guard let self = self else { return }
+            print("🎥 [CameraManager]: Cleaning up resources on main actor")
             
             // Cleanup timer
             self.recordingTimer?.invalidate()
             self.recordingTimer = nil
             
             // Clear references
+            self.previewLayer?.removeFromSuperlayer()
             self.previewLayer = nil
             self.videoOutput = nil
             self.frontCamera = nil
@@ -259,7 +267,7 @@ final class CameraManager: NSObject, ObservableObject {
             self.currentCamera = nil
             self.captureSession = nil
             
-            print("🎥 [CameraManager]: Cleanup completed")
+            print("🎥 [CameraManager]: Cleanup complete")
         }
     }
     
@@ -508,6 +516,13 @@ struct AlgorithmTagsSelectionView: View {
     }
 }
 
+extension RecordingView {
+    // Hide status bar
+    var prefersStatusBarHidden: Bool {
+        return true
+    }
+}
+
 #Preview {
     RecordingView()
-} 
+}

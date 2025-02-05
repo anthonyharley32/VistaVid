@@ -2,13 +2,9 @@
 
 #Week 5
 
-[ ] username - the username shown on the video just says @username, fix it so it shows the actual user who posted it's name.
-[ ] profile - the profile picture is not showing up on the feed. havee it so the user who posted the video's profile picture shows up.
-[X] like 
-[X] comment
-[X] share
 [ ] press to play/pause
 [ ] remove controls
+[ ] Videos are loading slow
 
 [ ] one step recording
 
@@ -16,7 +12,7 @@
 [ ] move profile to settings button
 [ ] add your stuff to "you" tab
 
-[ ] add communities tab
+[ ] add communities tab - let's flesh out 
 
 
 [ ] profile picture clean up
