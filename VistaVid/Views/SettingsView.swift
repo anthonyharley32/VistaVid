@@ -23,15 +23,11 @@ struct SettingsView: View {
             
             // Privacy & Safety
             Section("Privacy & Safety") {
-                NavigationLink {
-                    ContentRulesView()
-                } label: {
+                NavigationLink(destination: ContentRulesView(model: model)) {
                     Label("Content Rules", systemImage: "eye")
                 }
                 
-                NavigationLink {
-                    Text("Privacy Settings") // Placeholder for future implementation
-                } label: {
+                NavigationLink(destination: Text("Privacy Settings")) {
                     Label("Privacy", systemImage: "lock")
                 }
             }
@@ -78,10 +74,9 @@ struct ProfileEditView: View {
             
             Section {
                 Button("Save Changes") {
-                    // TODO: Implement save functionality
                     Task {
                         do {
-                            // Update username logic here
+                            try await model.updateUsername(username)
                             dismiss()
                         } catch {
                             alertMessage = error.localizedDescription
