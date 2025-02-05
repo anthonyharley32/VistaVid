@@ -54,27 +54,27 @@ Below is an example of a detailed Product Requirements Document (PRD) that you c
   - **Shares:** Increment a `sharesCount` and invoke share functionality.
   - **Follow/Unfollow:** Update user relationship data in Firestore.
 
-### 2.5. Algorithm Accountability
-- **What:** Allow users to filter their feed by selecting algorithms (e.g., "AI", "Fitness", "Makeup").
-- **Key Elements:**
-  - **UI:** A row of filter buttons on the feed and a selection screen on the profile.
-  - **Data:** Each video document contains an array `algorithmTags`.
-  - **Query:** Use Firestore’s `arrayContainsAny` to filter videos based on the user’s `selectedAlgorithms`.
-
-### 2.6. Business Algorithm
+### 2.5. Business Algorithm
 - **What:** For business users, provide trend analytics (e.g., upcoming trends with probability/confidence metrics).
 - **Key Elements:**
   - **Settings:** Toggle in the profile to enable a business account (`isBusiness` flag).
   - **Data:** Videos can have an optional `businessData` object containing fields like `trendRating` and `confidenceInterval`.
   - **UI:** Additional algorithm button/filter for “Business Trends.”
 
-### 2.7. Communities
+### 2.6. Communities
 - **What:** Users can create/join communities around interests.
 - **Key Elements:**
   - **Community Creation:** Users can create communities with a name, description, etc.
   - **Membership:** Lists of member IDs are maintained.
   - **Data:** Stored in a Firestore collection named `communities`.
   - **UI:** Community list view, details view, and membership management.
+
+### 2.7. Algorithm Accountability
+- **What:** Allow users to filter their feed by selecting algorithms (e.g., "AI", "Fitness", "Makeup").
+- **Key Elements:**
+  - **UI:** A row of filter buttons on the feed and a selection screen on the profile.
+  - **Data:** Each video document contains an array `algorithmTags`.
+  - **Query:** Use Firestore’s `arrayContainsAny` to filter videos based on the user’s `selectedAlgorithms`.
 
 ### 2.8. Future AI Features (for later iterations)
 - **(A) Hands Free Mode:**  
@@ -154,7 +154,37 @@ Below is an example of a detailed Product Requirements Document (PRD) that you c
 - **Error Handling:**  
   - Duplicate likes, comment validation, and proper relationship management.
 
-### 3.5. Algorithm Accountability
+### 3.5. Business Algorithm
+- **Dependencies:**  
+  - Firebase settings, Firestore.
+- **Flow:**
+  1. **Enable Business Account:**  
+     - In the profile settings, the user toggles `isBusiness` to true.
+  2. **Display Business Trends:**  
+     - For business accounts, add a business algorithm filter (e.g., “Business Trends”) to the feed.
+     - Videos may include an optional object `businessData` with keys such as:  
+       - `trendRating`: Number  
+       - `confidenceInterval`: String (e.g., `"95% CI: [0.90, 0.98]"`)
+- **Variable Names:**  
+  - User: `isBusiness` (Boolean).  
+  - Video: `businessData` (Dictionary/Object).
+
+### 3.6. Communities
+- **Dependencies:**  
+  - Firestore for data storage.
+- **Flow:**
+  1. **Community Creation:**  
+     - Allow users to create a community with a name and description.
+  2. **Joining/Leaving:**  
+     - Users can join or leave communities. Membership is maintained as an array of `userId`s in each community document.
+  3. **Community Feed:**  
+     - Optionally, each community can have its own feed (either as a subcollection or as a field linking to relevant videos).
+- **Variable Names:**  
+  - Community document: `communityId`, `name`, `description`, `createdAt`, `members` (array), `moderators` (array).
+- **Error Handling:**  
+  - Handle duplicate community names and validate membership actions.
+
+### 3.7. Algorithm Accountability
 - **Dependencies:**  
   - Firestore query capabilities; UI controls in Swift.
 - **Flow:**
@@ -171,36 +201,6 @@ Below is an example of a detailed Product Requirements Document (PRD) that you c
 - **Variable Names:**  
   - In video documents: `algorithmTags` (array of strings).  
   - In user documents: `selectedAlgorithms` (array of strings).
-
-### 3.6. Business Algorithm
-- **Dependencies:**  
-  - Firebase settings, Firestore.
-- **Flow:**
-  1. **Enable Business Account:**  
-     - In the profile settings, the user toggles `isBusiness` to true.
-  2. **Display Business Trends:**  
-     - For business accounts, add a business algorithm filter (e.g., “Business Trends”) to the feed.
-     - Videos may include an optional object `businessData` with keys such as:  
-       - `trendRating`: Number  
-       - `confidenceInterval`: String (e.g., `"95% CI: [0.90, 0.98]"`)
-- **Variable Names:**  
-  - User: `isBusiness` (Boolean).  
-  - Video: `businessData` (Dictionary/Object).
-
-### 3.7. Communities
-- **Dependencies:**  
-  - Firestore for data storage.
-- **Flow:**
-  1. **Community Creation:**  
-     - Allow users to create a community with a name and description.
-  2. **Joining/Leaving:**  
-     - Users can join or leave communities. Membership is maintained as an array of `userId`s in each community document.
-  3. **Community Feed:**  
-     - Optionally, each community can have its own feed (either as a subcollection or as a field linking to relevant videos).
-- **Variable Names:**  
-  - Community document: `communityId`, `name`, `description`, `createdAt`, `members` (array), `moderators` (array).
-- **Error Handling:**  
-  - Handle duplicate community names and validate membership actions.
 
 ### 3.8. Future AI Features (High-Level Requirements)
 - **Hands Free Mode:**  
