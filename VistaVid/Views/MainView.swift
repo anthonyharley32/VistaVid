@@ -21,19 +21,33 @@ struct MainView: View {
                     }
                     .tag(0)
                 
-                // Empty tab for spacing
+                // Communities Tab (Empty for now)
+                Color.clear
+                    .tabItem {
+                        Label("Communities", systemImage: "person.3.fill")
+                    }
+                    .tag(1)
+                
+                // Empty tab for camera button spacing
                 Color.clear
                     .tabItem {
                         Text("")
                     }
-                    .tag(1)
+                    .tag(2)
                 
-                // Profile Tab
+                // Inbox Tab (Empty for now)
+                Color.clear
+                    .tabItem {
+                        Label("Inbox", systemImage: "envelope.fill")
+                    }
+                    .tag(3)
+                
+                // You Tab (Previously Profile)
                 ProfileView(model: authModel)
                     .tabItem {
-                        Label("Profile", systemImage: "person.fill")
+                        Label("You", systemImage: "person.fill")
                     }
-                    .tag(2)
+                    .tag(4)
             }
             .tint(.primary)
             

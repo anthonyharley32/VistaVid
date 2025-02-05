@@ -7,6 +7,8 @@ struct FeedView: View {
     @State private var currentIndex: Int?
     @State private var visibleIndex: Int?
     @ObservedObject var authModel: AuthenticationViewModel
+    @State private var currentlyPlayingVideo: String? = nil
+    @State private var isPaused = false
     
     init(authModel: AuthenticationViewModel) {
         self.authModel = authModel
@@ -32,6 +34,20 @@ struct FeedView: View {
                                 .offset(y: -geometry.safeAreaInsets.top)
                                 .id(index)
                                 .modifier(VisibilityModifier(index: index, currentVisibleIndex: $visibleIndex))
+                                .overlay {
+                                    // Invisible button for tap gesture
+                                    Button(action: {
+                                        isPaused.toggle()
+                                        // Notify the VideoPlayerView
+                                        NotificationCenter.default.post(
+                                            name: NSNotification.Name("TogglePlayback"),
+                                            object: nil,
+                                            userInfo: ["videoId": video.id]
+                                        )
+                                    }) {
+                                        Color.clear
+                                    }
+                                }
                         }
                     }
                 }
@@ -303,6 +319,16 @@ struct VideoPlayerView: View {
         }
         .sheet(isPresented: $showComments) {
             CommentsView(video: video)
+        }
+        .onReceive(NotificationCenter.default.publisher(for: NSNotification.Name("TogglePlayback"))) { notification in
+            if let videoId = notification.userInfo?["videoId"] as? String,
+               videoId == video.id {
+                if player?.timeControlStatus == .playing {
+                    player?.pause()
+                } else {
+                    player?.play()
+                }
+            }
         }
     }
     
@@ -667,4 +693,4 @@ extension EnvironmentValues {
 
 #Preview {
     FeedView(authModel: AuthenticationViewModel())
-} 
+}

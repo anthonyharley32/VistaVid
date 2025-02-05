@@ -110,49 +110,45 @@ struct RecordingView: View {
         })
         .sheet(isPresented: $showingDescriptionSheet) {
             NavigationView {
-                Form {
-                    Section(header: Text("Video Details")) {
-                        TextField("Add a description...", text: $description)
+                VStack(spacing: 20) {
+                    // Description field
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("Description")
+                            .font(.subheadline)
+                            .foregroundColor(.secondary)
                         
-                        NavigationLink {
-                            AlgorithmTagsSelectionView(selectedTags: $selectedAlgorithmTags)
-                        } label: {
-                            HStack {
-                                Text("Algorithm Tags")
-                                Spacer()
-                                Text("\(selectedAlgorithmTags.count) selected")
-                                    .foregroundColor(.gray)
-                            }
-                        }
+                        TextField("What's happening in your video?", text: $description, axis: .vertical)
+                            .textFieldStyle(.roundedBorder)
+                            .lineLimit(3...6)
                     }
+                    .padding(.horizontal)
                     
-                    Section {
-                        Button("Upload Video") {
-                            Task {
-                                if let videoURL = cameraManager.lastRecordedVideoURL {
-                                    do {
-                                        try await VideoViewModel().uploadVideo(
-                                            videoURL: videoURL,
-                                            description: description,
-                                            algorithmTags: selectedAlgorithmTags
-                                        )
-                                        showingDescriptionSheet = false
-                                        description = ""
-                                        selectedAlgorithmTags = []
-                                        
-                                        // Stop the camera before dismissing
-                                        await cameraManager.cleanupCamera()
-                                        dismiss() // Dismiss the camera view after successful upload
-                                    } catch {
-                                        print("Error uploading video: \(error)")
-                                        // TODO: Show error alert
-                                    }
-                                }
-                            }
+                    // Upload button
+                    Button(action: {
+                        Task {
+                            guard let videoURL = cameraManager.lastRecordedVideoURL else { return }
+                            // TODO: Upload video
+                            showingDescriptionSheet = false
+                            description = ""
                         }
-                        .disabled(description.isEmpty)
+                    }) {
+                        HStack {
+                            Text("Post")
+                                .fontWeight(.semibold)
+                            Image(systemName: "arrow.up.circle.fill")
+                        }
+                        .frame(maxWidth: .infinity)
+                        .padding()
+                        .background(description.isEmpty ? Color.gray.opacity(0.3) : Color.blue)
+                        .foregroundColor(.white)
+                        .clipShape(RoundedRectangle(cornerRadius: 14))
                     }
+                    .disabled(description.isEmpty)
+                    .padding(.horizontal)
+                    
+                    Spacer()
                 }
+                .padding(.top)
                 .navigationTitle("New Video")
                 .navigationBarTitleDisplayMode(.inline)
                 .toolbar {
@@ -160,11 +156,13 @@ struct RecordingView: View {
                         Button("Cancel") {
                             showingDescriptionSheet = false
                             description = ""
-                            selectedAlgorithmTags = []
                         }
+                        .foregroundColor(.primary)
                     }
                 }
             }
+            .presentationDetents([.medium])
+            .presentationDragIndicator(.visible)
         }
     }
 }

@@ -12,10 +12,9 @@
 [ ] move profile to settings button
 [ ] add your stuff to "you" tab
 
-[ ] add communities tab - let's flesh out 
+[ ] add communities tab - 
 
-
-[ ] profile picture clean up
+[ ] profile picture clean up-the profile picture on the settings page has a camera icon overlaying the picture but in the circle. Kind of weird. Can 
 [ ] info editing clean up
 
 
