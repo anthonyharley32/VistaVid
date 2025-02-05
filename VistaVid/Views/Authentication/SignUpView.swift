@@ -16,9 +16,10 @@ struct SignUpView: View {
         VStack(spacing: 20) {
             // Header
             VStack(spacing: 10) {
-                Text("Create Account")
-                    .font(.title)
-                    .fontWeight(.bold)
+                Image("Logo")
+                    .resizable()
+                    .scaledToFit()
+                    .frame(width: 300, height: 100)
                 
                 Text("Join VistaVid today")
                     .font(.subheadline)
@@ -45,17 +46,21 @@ struct SignUpView: View {
             
             // Sign Up Button
             Button(action: signUp) {
-                if model.isLoading {
-                    ProgressView()
-                        .progressViewStyle(CircularProgressViewStyle(tint: .white))
-                } else {
-                    Text("Sign Up")
-                        .fontWeight(.semibold)
+                HStack {
+                    Spacer()
+                    if model.isLoading {
+                        ProgressView()
+                            .progressViewStyle(CircularProgressViewStyle(tint: .white))
+                    } else {
+                        Text("Sign Up")
+                            .fontWeight(.semibold)
+                    }
+                    Spacer()
                 }
             }
             .frame(maxWidth: .infinity)
             .padding()
-            .background(Color.blue)
+            .background(Color("AccentColor"))
             .foregroundColor(.white)
             .cornerRadius(10)
             .padding(.horizontal)
@@ -65,7 +70,7 @@ struct SignUpView: View {
             Button("Already have an account? Sign In") {
                 dismiss()
             }
-            .foregroundColor(.blue)
+            .foregroundColor(Color("AccentColor"))
             .padding(.top)
             
             Spacer()
@@ -102,3 +107,10 @@ struct SignUpView: View {
         }
     }
 } 
+
+
+struct ContentView_Previews: PreviewProvider {
+    static var previews: some View {
+        ContentView()
+    }
+}

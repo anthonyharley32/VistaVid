@@ -32,13 +32,10 @@ struct SignInView: View {
                 
                 // Logo and Welcome Text
                 VStack(spacing: 10) {
-                    Image(systemName: "camera.fill")
-                        .font(.system(size: 60))
-                        .foregroundColor(.blue)
-                    
-                    Text("Welcome to VistaVid")
-                        .font(.title)
-                        .fontWeight(.bold)
+                    Image("Logo")
+                        .resizable()
+                        .scaledToFit()
+                        .frame(width: 300, height: 100)
                     
                     Text("Sign in to continue")
                         .font(.subheadline)
@@ -63,17 +60,21 @@ struct SignInView: View {
                 
                 // Sign In Button
                 Button(action: signIn) {
-                    if model.isLoading {
-                        ProgressView()
-                            .progressViewStyle(CircularProgressViewStyle(tint: .white))
-                    } else {
-                        Text("Sign In")
-                            .fontWeight(.semibold)
+                    HStack {
+                        Spacer()
+                        if model.isLoading {
+                            ProgressView()
+                                .progressViewStyle(CircularProgressViewStyle(tint: .white))
+                        } else {
+                            Text("Sign In")
+                                .fontWeight(.semibold)
+                        }
+                        Spacer()
                     }
                 }
                 .frame(maxWidth: .infinity)
                 .padding()
-                .background(Color.blue)
+                .background(Color("AccentColor"))
                 .foregroundColor(.white)
                 .cornerRadius(10)
                 .padding(.horizontal)
@@ -90,7 +91,7 @@ struct SignInView: View {
                 Button("Don't have an account? Sign Up") {
                     showSignUp = true
                 }
-                .foregroundColor(.blue)
+                .foregroundColor(Color("AccentColor"))
                 .padding(.top)
                 .disabled(model.isLoading)
                 

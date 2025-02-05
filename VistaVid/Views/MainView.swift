@@ -3,6 +3,7 @@ import SwiftUI
 struct MainView: View {
     @StateObject private var authModel: AuthenticationViewModel
     @State private var selectedTab = 0
+    @State private var showingCamera = false
     
     init(authModel: AuthenticationViewModel) {
         _authModel = StateObject(wrappedValue: authModel)
@@ -19,15 +20,24 @@ struct MainView: View {
                 .tag(0)
             
             // Record Tab
-            Text("Record View Coming Soon")
-                .tabItem {
-                    Image(systemName: selectedTab == 1 ? "camera.circle.fill" : "camera.circle")
-                    Text("Record")
-                }
-                .tag(1)
+            Button(action: {
+                showingCamera = true
+            }) {
+                Color.black
+                    .overlay(
+                        Image(systemName: "camera.circle.fill")
+                            .font(.system(size: 30))
+                            .foregroundColor(.white)
+                    )
+            }
+            .tabItem {
+                Image(systemName: selectedTab == 1 ? "camera.circle.fill" : "camera.circle")
+                Text("Record")
+            }
+            .tag(1)
             
             // Profile Tab
-            Text("Profile View Coming Soon")
+            ProfileView(model: authModel)
                 .tabItem {
                     Image(systemName: selectedTab == 2 ? "person.circle.fill" : "person.circle")
                     Text("Profile")
@@ -35,5 +45,8 @@ struct MainView: View {
                 .tag(2)
         }
         .tint(.primary)
+        .fullScreenCover(isPresented: $showingCamera) {
+            RecordingView()
+        }
     }
 } 

@@ -28,13 +28,19 @@ You are building an AI app that is a clone of TikTok.
 │   ├── GoogleService-Info.plist
 │   ├── Info.plist
 │   ├── Models
-│   │   └── User.swift
+│   │   ├── User.swift
+│   │   └── Video.swift
 │   ├── Preview Content
 │   │   └── Preview Assets.xcassets
 │   ├── ViewModels
-│   │   └── AuthenticationViewModel.swift
+│   │   ├── AuthenticationViewModel.swift
+│   │   └── VideoViewModel.swift
 │   ├── Views
-│   │   └── Authentication
+│   │   ├── Authentication
+│   │   ├── Components
+│   │   ├── FeedView.swift
+│   │   ├── MainView.swift
+│   │   └── ProfileView.swift
 │   ├── VistaVid.entitlements
 │   └── VistaVidApp.swift
 ├── VistaVid.xcodeproj
@@ -45,7 +51,6 @@ You are building an AI app that is a clone of TikTok.
 │   │   └── xcuserdata
 │   └── xcuserdata
 │       └── gauntletAI.xcuserdatad
-├── VistaVidApp.swift
 ├── buildServer.json
 └── project.yml
 

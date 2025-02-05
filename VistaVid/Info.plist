@@ -6,5 +6,9 @@
 	<array>
 		<dict/>
 	</array>
+	<key>NSCameraUsageDescription</key>
+	<string>VistaVid needs access to your camera to record videos</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>VistaVid needs access to your microphone to record video audio</string>
 </dict>
 </plist>

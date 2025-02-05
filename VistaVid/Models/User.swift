@@ -3,10 +3,10 @@ import FirebaseAuth
 import FirebaseFirestore
 
 // User model that matches the Firestore data structure
-struct User: Identifiable, Codable {
+class User: Identifiable, Codable {
     // MARK: - Properties
     let id: String
-    let username: String
+    var username: String
     let email: String
     let createdAt: Date
     var profilePicUrl: String?

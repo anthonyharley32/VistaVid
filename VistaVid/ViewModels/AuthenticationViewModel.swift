@@ -134,33 +134,53 @@ final class AuthenticationViewModel: ObservableObject {
     
     /// Updates the user's profile picture
     func updateProfilePicture(_ image: UIImage) async throws {
-        debugLog("Attempting to update profile picture")
-        guard let currentUser = currentUser else { throw AuthError.userNotFound }
+        debugLog("📸 Attempting to update profile picture")
+        guard let currentUser = currentUser else { 
+            debugLog("❌ No current user found")
+            throw AuthError.userNotFound 
+        }
         
         do {
             // Convert image to data
             guard let imageData = image.jpegData(compressionQuality: 0.7) else {
+                debugLog("❌ Failed to convert image to JPEG data")
                 throw AuthError.unknown
             }
+            
+            debugLog("📤 Starting upload to Firebase Storage")
             
             // Create a reference to Firebase Storage
             let storageRef = Storage.storage().reference()
             let profilePicRef = storageRef.child("profile_pictures/\(currentUser.id).jpg")
             
             // Upload the image
-            _ = try await profilePicRef.putDataAsync(imageData)
+            debugLog("📤 Uploading image data: \(imageData.count) bytes")
+            let metadata = StorageMetadata()
+            metadata.contentType = "image/jpeg"
+            _ = try await profilePicRef.putDataAsync(imageData, metadata: metadata)
+            debugLog("✅ Image uploaded successfully")
+            
+            debugLog("🔗 Getting download URL...")
             let downloadURL = try await profilePicRef.downloadURL()
+            debugLog("✅ Got download URL: \(downloadURL.absoluteString)")
             
             // Update Firestore with new profile picture URL
-            let updateData: [String: String] = ["profilePicUrl": downloadURL.absoluteString]
+            debugLog("💾 Updating Firestore document...")
+            let updateData: [String: Any] = ["profilePicUrl": downloadURL.absoluteString]
             try await db.collection("users").document(currentUser.id).updateData(updateData)
             
             // Update local user object
-            self.currentUser?.profilePicUrl = downloadURL.absoluteString
-            debugLog("Successfully updated profile picture")
+            debugLog("🔄 Updating local user object...")
+            await MainActor.run {
+                self.currentUser?.profilePicUrl = downloadURL.absoluteString
+                debugLog("✅ Successfully updated profile picture")
+            }
             
+        } catch let storageError as StorageError {
+            debugLog("❌ Storage error: \(storageError.localizedDescription)")
+            throw AuthError.unknown
         } catch {
-            debugLog("Failed to update profile picture: \(error.localizedDescription)")
+            debugLog("❌ Failed to update profile picture: \(error)")
             throw AuthError.unknown
         }
     }
@@ -179,6 +199,29 @@ final class AuthenticationViewModel: ObservableObject {
             
         } catch {
             debugLog("Failed to update business status: \(error.localizedDescription)")
+            throw AuthError.unknown
+        }
+    }
+    
+    /// Updates the user's username
+    func updateUsername(_ newUsername: String) async throws {
+        debugLog("Attempting to update username to: \(newUsername)")
+        guard let currentUser = currentUser else { throw AuthError.userNotFound }
+        
+        // Validate username
+        guard !newUsername.isEmpty else {
+            throw AuthError.signUpFailed("Username cannot be empty")
+        }
+        
+        do {
+            let updateData: [String: String] = ["username": newUsername]
+            try await db.collection("users").document(currentUser.id).updateData(updateData)
+            
+            self.currentUser?.username = newUsername
+            debugLog("Successfully updated username")
+            
+        } catch {
+            debugLog("Failed to update username: \(error.localizedDescription)")
             throw AuthError.unknown
         }
     }

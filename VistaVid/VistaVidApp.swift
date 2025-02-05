@@ -42,11 +42,8 @@ struct VistaVidApp: App {
         WindowGroup {
             Group {
                 if authModel.isAuthenticated {
-                    // Main app content will go here
-                    Text("Welcome \(authModel.currentUser?.username ?? "")!")
-                        .onTapGesture {
-                            try? authModel.signOut()
-                        }
+                    MainView(authModel: authModel)
+                        .environmentObject(authModel)
                 } else {
                     SignInView(model: authModel)
                 }
