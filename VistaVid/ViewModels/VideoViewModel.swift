@@ -134,29 +134,31 @@ final class VideoViewModel: ObservableObject {
             
             // Generate and upload thumbnail
             debugLog("🖼️ Generating thumbnail")
-            if let thumbnailData = try await generateThumbnail(from: videoURL) {
+            if let thumbnail = try await generateThumbnail(for: videoURL),
+               let thumbnailData = thumbnail.jpegData(compressionQuality: 0.7) {
                 let thumbnailRef = storage.child("thumbnails/\(videoId).jpg")
                 debugLog("📤 Uploading thumbnail")
-                _ = try await thumbnailRef.putDataAsync(thumbnailData)
+                try await thumbnailRef.putDataAsync(thumbnailData)
+                let thumbnailUrl = try await thumbnailRef.downloadURL().absoluteString
                 debugLog("✅ Thumbnail uploaded successfully")
+                
+                // Create video document
+                debugLog("📝 Creating Firestore document")
+                let video = Video(
+                    id: videoId,
+                    userId: currentUser.uid,
+                    videoUrl: videoDownloadURL.absoluteString,
+                    thumbnailUrl: thumbnailUrl,
+                    description: description,
+                    createdAt: Date(),
+                    algorithmTags: algorithmTags
+                )
+                
+                // Save to Firestore
+                try await db.collection("videos").document(videoId).setData(video.toDictionary())
+                debugLog("✅ Video document created in Firestore")
+                debugLog("🎉 Upload process completed successfully")
             }
-            
-            // Create video document
-            debugLog("📝 Creating Firestore document")
-            let video = Video(
-                id: videoId,
-                userId: currentUser.uid,
-                videoUrl: videoDownloadURL.absoluteString,
-                thumbnailUrl: nil, // TODO: Add thumbnail URL
-                description: description,
-                createdAt: Date(),
-                algorithmTags: algorithmTags
-            )
-            
-            // Save to Firestore
-            try await db.collection("videos").document(videoId).setData(video.toDictionary())
-            debugLog("✅ Video document created in Firestore")
-            debugLog("🎉 Upload process completed successfully")
             
         } catch {
             debugLog("❌ Error uploading video: \(error)")
@@ -502,21 +504,18 @@ final class VideoViewModel: ObservableObject {
     // MARK: - Helper Methods
     
     /// Generates a thumbnail from a video URL
-    private func generateThumbnail(from videoURL: URL) async throws -> Data? {
-        debugLog("🖼️ Starting thumbnail generation")
+    func generateThumbnail(for videoURL: URL) async throws -> UIImage? {
         let asset = AVURLAsset(url: videoURL)
-        let imageGenerator = AVAssetImageGenerator(asset: asset)
-        imageGenerator.appliesPreferredTrackTransform = true
+        let generator = AVAssetImageGenerator(asset: asset)
+        generator.appliesPreferredTrackTransform = true
         
-        // Get thumbnail at 0 seconds
-        debugLog("🖼️ Generating thumbnail frame")
-        let cgImage = try await imageGenerator.image(at: .zero).image
-        
-        // Convert to UIImage and then to Data
-        let thumbnail = UIImage(cgImage: cgImage)
-        let data = thumbnail.jpegData(compressionQuality: 0.7)
-        debugLog("🖼️ Thumbnail generated: \(data?.count ?? 0) bytes")
-        return data
+        do {
+            let cgImage = try await generator.image(at: .zero).image
+            return UIImage(cgImage: cgImage)
+        } catch {
+            debugLog("❌ Failed to generate thumbnail: \(error)")
+            throw error
+        }
     }
     
     /// Debug logging

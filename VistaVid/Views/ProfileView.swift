@@ -171,35 +171,32 @@ private struct VideosGridSection: View {
 // MARK: - Video Thumbnail
 private struct VideoThumbnail: View {
     let video: Video
+    @State private var thumbnail: UIImage?
+    @StateObject private var videoModel = VideoViewModel()
     
     var body: some View {
         Group {
-            if let thumbnailUrl = video.thumbnailUrl,
-               let url = URL(string: thumbnailUrl) {
-                AsyncImage(url: url) { phase in
-                    switch phase {
-                    case .empty:
-                        ProgressView()
-                    case .success(let image):
-                        image
-                            .resizable()
-                            .aspectRatio(1, contentMode: .fill)
-                    case .failure(_):
-                        Color.gray
-                            .overlay(
-                                Image(systemName: "video.slash")
-                                    .foregroundColor(.white)
-                            )
-                    @unknown default:
-                        Color.gray
-                    }
-                }
+            if let image = thumbnail {
+                Image(uiImage: image)
+                    .resizable()
+                    .aspectRatio(contentMode: .fill)
+                    .frame(width: UIScreen.main.bounds.width/3, height: UIScreen.main.bounds.width/2)
+                    .clipped()
             } else {
                 Color.gray
                     .overlay(
                         Image(systemName: "video")
                             .foregroundColor(.white)
                     )
+                    .task {
+                        if let url = video.url {
+                            do {
+                                thumbnail = try await videoModel.generateThumbnail(for: url)
+                            } catch {
+                                print("❌ Failed to generate thumbnail: \(error)")
+                            }
+                        }
+                    }
             }
         }
         .aspectRatio(1, contentMode: .fill)
