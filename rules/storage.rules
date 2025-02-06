@@ -1,17 +1,28 @@
 rules_version = '2';
+
 service firebase.storage {
   match /b/{bucket}/o {
-    match /profile_pictures/{userId} {
-      allow read: if true;  // Anyone can view profile pictures
-      allow write: if request.auth != null && request.auth.uid == userId;
+    // Allow public read access to processed HLS videos and segments
+    match /hls/{videoId}/{allPaths=**} {
+      allow read: if true; // Public access for video streaming
     }
+    
+    // Allow authenticated users to upload original videos
     match /videos/{videoId} {
-      allow read: if true;  // Anyone can view videos
-      allow write: if request.auth != null;  // Any authenticated user can upload videos
+      allow read: if request.auth != null;
+      allow create: if request.auth != null
+        && request.resource.size < 500 * 1024 * 1024 // 500MB max
+        && request.resource.contentType.matches('video/.*')
+        && videoId.matches('^[a-zA-Z0-9_-]+$'); // Ensure safe video IDs
+      
+      // Only allow deletion by video owner
+      allow delete: if request.auth != null
+        && request.auth.uid == resource.metadata.userId;
     }
-    match /thumbnails/{thumbnailId} {
-      allow read: if true;  // Anyone can view thumbnails
-      allow write: if request.auth != null;  // Any authenticated user can upload thumbnails
+    
+    // Prevent direct modification of HLS files
+    match /hls/{videoId}/{allPaths=**} {
+      allow write: if false; // Only Cloud Functions can write HLS files
     }
   }
 }
