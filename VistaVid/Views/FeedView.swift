@@ -9,98 +9,116 @@ struct FeedView: View {
     @ObservedObject var authModel: AuthenticationViewModel
     @State private var currentlyPlayingVideo: String? = nil
     @State private var isPaused = false
+    @State private var selectedUser: User?
     
     init(authModel: AuthenticationViewModel) {
         self.authModel = authModel
     }
     
     var body: some View {
-        GeometryReader { geometry in
-            if viewModel.isLoading {
-                ProgressView()
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
-            } else if viewModel.videos.isEmpty {
-                Text("No videos available")
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
-            } else {
-                ScrollView(.vertical, showsIndicators: false) {
-                    LazyVStack(spacing: 0) {
-                        ForEach(Array(viewModel.videos.enumerated()), id: \.element.id) { index, video in
-                            VideoPlayerView(video: video, 
-                                          index: index, 
-                                          videoManager: videoManager,
-                                          isVisible: visibleIndex == index)
-                                .frame(width: geometry.size.width, height: geometry.size.height + geometry.safeAreaInsets.top + geometry.safeAreaInsets.bottom)
-                                .offset(y: -geometry.safeAreaInsets.top)
-                                .id(index)
-                                .modifier(VisibilityModifier(index: index, currentVisibleIndex: $visibleIndex))
-                                .onTapGesture { location in
-                                    let frame = CGRect(x: 0, y: 0, width: geometry.size.width, height: geometry.size.height)
-                                    
-                                    // Use relative dimensions
-                                    let rightSideWidth = frame.width * 0.2 // 20% of screen width
-                                    let engagementAreaHeight = frame.height * 0.4 // 40% of screen height
-                                    
-                                    // Profile picture area (just above like button)
-                                    let profileStartY = frame.height - engagementAreaHeight // Start of engagement area
-                                    let profileHeight = frame.height * 0.1 // Height for profile picture area
-                                    
-                                    print(" [FeedView]: Tap location - x: \(location.x), y: \(location.y)")
-                                    print(" [FeedView]: Frame - width: \(frame.width), height: \(frame.height)")
-                                    print(" [FeedView]: Profile area - right: \(frame.width - rightSideWidth), y: \(profileStartY)")
-                                    
-                                    // Check tap zones
-                                    let isInEngagementArea = location.x > (frame.width - rightSideWidth) && 
+        NavigationStack {
+            GeometryReader { geometry in
+                if viewModel.isLoading {
+                    ProgressView()
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                } else if viewModel.videos.isEmpty {
+                    Text("No videos available")
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                } else {
+                    ScrollView(.vertical, showsIndicators: false) {
+                        LazyVStack(spacing: 0) {
+                            ForEach(Array(viewModel.videos.enumerated()), id: \.element.id) { index, video in
+                                VideoPlayerView(video: video, 
+                                              index: index, 
+                                              videoManager: videoManager,
+                                              isVisible: visibleIndex == index)
+                                    .frame(width: geometry.size.width, height: geometry.size.height)
+                                    .onAppear {
+                                        print(" [FeedView]: Video \(index) appeared")
+                                        if currentIndex == nil {
+                                            currentIndex = index
+                                            visibleIndex = index
+                                        }
+                                    }
+                                    .onTapGesture { location in
+                                        let frame = CGRect(x: 0, y: 0, width: geometry.size.width, height: geometry.size.height)
+                                        
+                                        // Use relative dimensions
+                                        let rightSideWidth = frame.width * 0.2 // 20% of screen width
+                                        let engagementAreaHeight = frame.height * 0.4 // 40% of screen height
+                                        
+                                        // Profile picture area (just above like button)
+                                        let profileStartY = frame.height - engagementAreaHeight // Start of engagement area
+                                        let profileHeight = frame.height * 0.1 // Height for profile picture area
+                                        
+                                        print(" [FeedView]: Tap location - x: \(location.x), y: \(location.y)")
+                                        print(" [FeedView]: Frame - width: \(frame.width), height: \(frame.height)")
+                                        print(" [FeedView]: Profile area - right: \(frame.width - rightSideWidth), y: \(profileStartY)")
+                                        
+                                        // Check tap zones
+                                        let isInEngagementArea = location.x > (frame.width - rightSideWidth) && 
                                                            location.y > profileStartY
-                                    let isInProfileArea = location.x > (frame.width - rightSideWidth) && 
+                                        let isInProfileArea = location.x > (frame.width - rightSideWidth) && 
                                                         location.y > profileStartY &&
                                                         location.y < (profileStartY + profileHeight)
-                                    
-                                    print(" [FeedView]: isInProfileArea: \(isInProfileArea)")
-                                    print(" [FeedView]: Current user id: \(String(describing: authModel.currentUser?.id))")
-                                    print(" [FeedView]: Video user id: \(String(describing: video.user?.id))")
-                                    
-                                    if isInProfileArea {
-                                        // Navigate to You tab
-                                        if video.user?.id == authModel.currentUser?.id {
-                                            print(" [FeedView]: Navigating to You tab")
-                                            NotificationCenter.default.post(name: NSNotification.Name("NavigateToYouTab"), object: nil)
+                                        
+                                        print(" [FeedView]: isInProfileArea: \(isInProfileArea)")
+                                        print(" [FeedView]: Current user id: \(String(describing: authModel.currentUser?.id))")
+                                        print(" [FeedView]: Video user id: \(String(describing: video.user?.id))")
+                                        
+                                        if isInProfileArea {
+                                            // Navigate to You tab
+                                            if video.user?.id == authModel.currentUser?.id {
+                                                print(" [FeedView]: Navigating to You tab")
+                                                NotificationCenter.default.post(name: NSNotification.Name("NavigateToYouTab"), object: nil)
+                                            } else {
+                                                // Navigate to UserProfileView
+                                                print(" [FeedView]: Navigating to UserProfileView")
+                                                selectedUser = video.user
+                                            }
+                                        } else if !isInEngagementArea {
+                                            isPaused.toggle()
+                                            NotificationCenter.default.post(
+                                                name: NSNotification.Name("TogglePlayback"),
+                                                object: nil,
+                                                userInfo: ["videoId": video.id]
+                                            )
                                         }
-                                    } else if !isInEngagementArea {
-                                        isPaused.toggle()
-                                        NotificationCenter.default.post(
-                                            name: NSNotification.Name("TogglePlayback"),
-                                            object: nil,
-                                            userInfo: ["videoId": video.id]
-                                        )
                                     }
-                                }
+                                    .modifier(VisibilityModifier(index: index, currentVisibleIndex: $visibleIndex))
+                                    .onDisappear {
+                                        print(" [FeedView]: Video \(index) disappeared")
+                                    }
+                            }
                         }
                     }
-                }
-                .scrollTargetBehavior(.paging)
-                .scrollPosition(id: $currentIndex)
-                .onChange(of: visibleIndex) { oldValue, newValue in
-                    print(" [FeedView]: Visible index changed from \(String(describing: oldValue)) to \(String(describing: newValue))")
-                    if let index = newValue {
-                        videoManager.pauseAllExcept(index: index)
-                    } else {
+                    .scrollTargetBehavior(.paging)
+                    .scrollPosition(id: $currentIndex)
+                    .onChange(of: visibleIndex) { oldValue, newValue in
+                        print(" [FeedView]: Visible index changed from \(String(describing: oldValue)) to \(String(describing: newValue))")
+                        if let index = newValue {
+                            videoManager.pauseAllExcept(index: index)
+                        } else {
+                            videoManager.cleanup()
+                        }
+                    }
+                    .onDisappear {
                         videoManager.cleanup()
                     }
+                    .ignoresSafeArea()
                 }
-                .onDisappear {
-                    videoManager.cleanup()
-                }
-                .ignoresSafeArea()
             }
-        }
-        .background(Color(.systemBackground))
-        .ignoresSafeArea()
-        .statusBar(hidden: true)
-        .environment(\.videoViewModel, viewModel)
-        .onAppear {
-            Task {
-                await viewModel.loadVideos()
+            .background(Color(.systemBackground))
+            .ignoresSafeArea()
+            .statusBar(hidden: true)
+            .environment(\.videoViewModel, viewModel)
+            .onAppear {
+                Task {
+                    await viewModel.loadVideos()
+                }
+            }
+            .sheet(item: $selectedUser) { user in
+                UserProfileView(user: user)
             }
         }
     }
@@ -234,38 +252,42 @@ struct VideoPlayerView: View {
                             // Profile picture
                             if let profilePicUrl = video.user?.profilePicUrl,
                                let url = URL(string: profilePicUrl) {
-                                AsyncImage(url: url) { phase in
-                                    switch phase {
-                                    case .empty:
-                                        Circle()
-                                            .fill(Color.gray.opacity(0.5))
-                                            .frame(width: 44, height: 44)
-                                            .overlay(
-                                                ProgressView()
-                                                    .foregroundColor(.white)
-                                            )
-                                    case .success(let image):
-                                        image
-                                            .resizable()
-                                            .aspectRatio(contentMode: .fill)
-                                            .frame(width: 44, height: 44)
-                                            .clipShape(Circle())
-                                    case .failure:
-                                        Circle()
-                                            .fill(Color.gray.opacity(0.5))
-                                            .frame(width: 44, height: 44)
-                                            .overlay(
-                                                Image(systemName: "person.fill")
-                                                    .foregroundColor(.white)
-                                            )
-                                    @unknown default:
-                                        EmptyView()
+                                NavigationLink(destination: UserProfileView(user: video.user!)) {
+                                    AsyncImage(url: url) { phase in
+                                        switch phase {
+                                        case .empty:
+                                            Circle()
+                                                .fill(Color.gray.opacity(0.5))
+                                                .frame(width: 50, height: 50)
+                                        case .success(let image):
+                                            image
+                                                .resizable()
+                                                .aspectRatio(contentMode: .fill)
+                                                .frame(width: 50, height: 50)
+                                                .clipShape(Circle())
+                                                .overlay(Circle().stroke(Color.white, lineWidth: 2))
+                                        case .failure:
+                                            Circle()
+                                                .fill(Color.gray)
+                                                .frame(width: 50, height: 50)
+                                                .overlay(
+                                                    Image(systemName: "person.fill")
+                                                        .foregroundColor(.white)
+                                                )
+                                        @unknown default:
+                                            Circle()
+                                                .fill(Color.gray)
+                                                .frame(width: 50, height: 50)
+                                        }
+                                    }
+                                    .onTapGesture {
+                                        print("🔍 Profile tapped for user: \(video.user?.username ?? "unknown")")
                                     }
                                 }
                             } else {
                                 Circle()
                                     .fill(Color.gray.opacity(0.5))
-                                    .frame(width: 44, height: 44)
+                                    .frame(width: 50, height: 50)
                                     .overlay(
                                         Image(systemName: "person.fill")
                                             .foregroundColor(.white)
