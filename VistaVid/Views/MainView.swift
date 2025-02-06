@@ -42,7 +42,7 @@ struct MainView: View {
                     .tag(3)
                 
                 // You Tab (Previously Profile)
-                ProfileView(model: authModel)
+                ProfileView(user: authModel.currentUser ?? User.placeholder, authModel: authModel)
                     .tabItem {
                         Label("You", systemImage: "person.fill")
                     }

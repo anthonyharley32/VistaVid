@@ -3,115 +3,75 @@ import FirebaseAuth
 import AVKit
 
 struct ProfileView: View {
-    let model: AuthenticationViewModel
-    @StateObject private var videoModel = VideoViewModel()
-    
-    // MARK: - Properties
-    @State private var showingSettings = false
+    @StateObject var videoModel = VideoViewModel()
     @State private var userVideos: [Video] = []
-    @State private var isLoadingVideos = false
-    @State private var error: Error?
+    @State private var showingSettings = false
+    let user: User
+    let authModel: AuthenticationViewModel
     
     var body: some View {
         NavigationView {
             ScrollView {
-                VStack(spacing: 20) {
+                VStack(spacing: 12) {
                     // Profile Header
-                    ProfileHeaderSection(model: model)
-                        .padding(.horizontal)
+                    HStack(alignment: .center, spacing: 15) {
+                        CircularProfileImage(user: user, size: 90)
+                        
+                        VStack(alignment: .leading, spacing: 6) {
+                            Text("@\(user.username)")
+                                .font(.title3)
+                                .fontWeight(.bold)
+                            
+                            HStack(spacing: 25) {
+                                StatItem(value: "\(userVideos.count)", title: "Posts")
+                                StatItem(value: "0", title: "Followers")
+                                StatItem(value: "0", title: "Following")
+                            }
+                        }
+                    }
+                    .padding(.horizontal)
+                    .padding(.top, 5)
                     
-                    // Stats Section
-                    StatsSection(videosCount: userVideos.count)
+                    Text("Bio coming soon")
+                        .font(.subheadline)
+                        .foregroundColor(.gray)
+                        .frame(maxWidth: .infinity, alignment: .leading)
                         .padding(.horizontal)
                     
                     // Videos Grid
                     VideosGridSection(videos: userVideos, videoModel: videoModel)
                 }
             }
-            .navigationTitle("Profile")
+            .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .navigationBarTrailing) {
-                    NavigationLink(destination: SettingsView(model: model)) {
+                    NavigationLink(destination: SettingsView(model: authModel)) {
                         Image(systemName: "gearshape.fill")
                             .font(.title2)
                     }
                 }
             }
-            .task {
-                await loadUserVideos()
-            }
-            .refreshable {
-                await loadUserVideos()
-            }
         }
-    }
-    
-    private func loadUserVideos() async {
-        guard let userId = model.currentUser?.id else { return }
-        
-        isLoadingVideos = true
-        defer { isLoadingVideos = false }
-        
-        do {
-            userVideos = try await videoModel.fetchUserVideos(userId: userId)
-        } catch {
-            print("❌ Error loading user videos: \(error)")
-            self.error = error
+        .task {
+            if let videos = try? await videoModel.fetchUserVideos(userId: user.id) {
+                userVideos = videos
+            }
         }
     }
 }
 
-// MARK: - Profile Header Section
-private struct ProfileHeaderSection: View {
-    let model: AuthenticationViewModel
-    @State private var showingImagePicker = false
-    @State private var selectedImage: UIImage?
-    @State private var isUpdatingProfilePic = false
+private struct StatItem: View {
+    let value: String
+    let title: String
     
     var body: some View {
-        HStack(alignment: .center, spacing: 15) {
-            // Profile Image
-            ProfileImageButton(
-                profilePicUrl: model.currentUser?.profilePicUrl,
-                isUpdatingProfilePic: $isUpdatingProfilePic,
-                showingImagePicker: $showingImagePicker
-            )
-            .frame(width: 100, height: 100)
-            
-            VStack(alignment: .leading, spacing: 4) {
-                Text(model.currentUser?.username ?? "Username")
-                    .font(.title2)
-                    .fontWeight(.bold)
-                
-                Text(model.currentUser?.email ?? "")
-                    .font(.subheadline)
-                    .foregroundColor(.secondary)
-            }
-            
-            Spacer()
-        }
-        .sheet(isPresented: $showingImagePicker) {
-            ImagePicker(image: $selectedImage)
-        }
-        .onChange(of: selectedImage) { oldValue, newValue in
-            guard let image = newValue else { return }
-            uploadProfilePicture(image)
-        }
-    }
-    
-    private func uploadProfilePicture(_ image: UIImage) {
-        print("📸 Starting profile picture upload...")
-        isUpdatingProfilePic = true
-        
-        Task {
-            do {
-                try await model.updateProfilePicture(image)
-                print("✅ Profile picture updated successfully")
-            } catch {
-                print("❌ Failed to update profile picture: \(error)")
-            }
-            selectedImage = nil
-            isUpdatingProfilePic = false
+        VStack(spacing: 4) {
+            Text(value)
+                .font(.title3)
+                .fontWeight(.bold)
+            Text(title)
+                .font(.caption)
+                .foregroundColor(.gray)
         }
     }
 }
@@ -122,25 +82,9 @@ private struct StatsSection: View {
     
     var body: some View {
         HStack(spacing: 30) {
-            StatItem(count: "\(videosCount)", title: "Posts")
-            StatItem(count: "0", title: "Followers")
-            StatItem(count: "0", title: "Following")
-        }
-    }
-}
-
-private struct StatItem: View {
-    let count: String
-    let title: String
-    
-    var body: some View {
-        VStack(spacing: 4) {
-            Text(count)
-                .font(.headline)
-                .fontWeight(.bold)
-            Text(title)
-                .font(.subheadline)
-                .foregroundColor(.secondary)
+            StatItem(value: "\(videosCount)", title: "Posts")
+            StatItem(value: "0", title: "Followers")
+            StatItem(value: "0", title: "Following")
         }
     }
 }
@@ -148,8 +92,8 @@ private struct StatItem: View {
 // MARK: - Videos Grid Section
 private struct VideosGridSection: View {
     let videos: [Video]
+    let videoModel: VideoViewModel
     @StateObject private var videoManager = VideoPlayerManager()
-    @ObservedObject var videoModel: VideoViewModel
     
     private let columns = [
         GridItem(.flexible()),
@@ -172,7 +116,6 @@ private struct VideosGridSection: View {
 private struct VideoThumbnail: View {
     let video: Video
     @State private var thumbnail: UIImage?
-    @StateObject private var videoModel = VideoViewModel()
     
     var body: some View {
         Group {
@@ -191,7 +134,7 @@ private struct VideoThumbnail: View {
                     .task {
                         if let url = video.url {
                             do {
-                                thumbnail = try await videoModel.generateThumbnail(for: url)
+                                thumbnail = try await VideoViewModel().generateThumbnail(for: url)
                             } catch {
                                 print("❌ Failed to generate thumbnail: \(error)")
                             }
@@ -268,5 +211,38 @@ struct ProfileImageButton: View {
         }
         .buttonStyle(PlainButtonStyle()) // Prevents button styling from affecting touch area
         .contentShape(Circle()) // Explicitly set the touch area to the circle
+    }
+}
+
+struct CircularProfileImage: View {
+    let user: User
+    let size: CGFloat
+    
+    var body: some View {
+        AsyncImage(url: URL(string: user.profilePicUrl ?? "")) { phase in
+            switch phase {
+            case .empty:
+                ProgressView()
+                    .frame(width: size, height: size)
+            case .success(let image):
+                image
+                    .resizable()
+                    .scaledToFill()
+            case .failure(_):
+                Image(systemName: "person.circle.fill")
+                    .resizable()
+                    .foregroundColor(.gray)
+            @unknown default:
+                Image(systemName: "person.circle.fill")
+                    .resizable()
+                    .foregroundColor(.gray)
+            }
+        }
+        .frame(width: size, height: size)
+        .clipShape(Circle())
+        .overlay(
+            Circle()
+                .stroke(Color.secondary.opacity(0.3), lineWidth: 1)
+        )
     }
 }

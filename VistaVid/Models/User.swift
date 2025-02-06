@@ -66,6 +66,17 @@ class User: Identifiable, Codable {
             selectedAlgorithms: data["selectedAlgorithms"] as? [String] ?? []
         )
     }
+    
+    // MARK: - Static Properties
+    static let placeholder = User(
+        id: "placeholder",
+        username: "user",
+        email: "",
+        createdAt: Date(),
+        profilePicUrl: nil,
+        isBusiness: false,
+        selectedAlgorithms: []
+    )
 }
 
 // MARK: - Helper Methods
