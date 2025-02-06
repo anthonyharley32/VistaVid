@@ -5,49 +5,106 @@ import AVKit
 struct ProfileView: View {
     @StateObject var videoModel = VideoViewModel()
     @State private var userVideos: [Video] = []
-    @State private var showingSettings = false
+    @State private var selectedTab = 0
     let user: User
     let authModel: AuthenticationViewModel
     
     var body: some View {
         NavigationView {
-            ScrollView {
-                VStack(spacing: 12) {
+            ScrollView(showsIndicators: false) {
+                VStack(spacing: 0) {
                     // Profile Header
-                    HStack(alignment: .center, spacing: 15) {
-                        CircularProfileImage(user: user, size: 90)
+                    VStack(spacing: 16) {
+                        CircularProfileImage(user: user, size: 100)
                         
-                        VStack(alignment: .leading, spacing: 6) {
+                        VStack(spacing: 6) {
                             Text("@\(user.username)")
-                                .font(.title3)
-                                .fontWeight(.bold)
+                                .font(.system(size: 16, weight: .semibold))
                             
-                            HStack(spacing: 25) {
-                                StatItem(value: "\(userVideos.count)", title: "Posts")
-                                StatItem(value: "0", title: "Followers")
-                                StatItem(value: "0", title: "Following")
+                            Text("Bio coming soon")
+                                .font(.system(size: 14))
+                                .foregroundColor(.secondary)
+                        }
+                        
+                        // Stats Row
+                        HStack {
+                            Spacer()
+                            StatItem(value: "\(userVideos.count)", title: "Posts")
+                                .frame(width: 80)
+                            StatItem(value: "0", title: "Followers")
+                                .frame(width: 80)
+                            StatItem(value: "0", title: "Following")
+                                .frame(width: 80)
+                            Spacer()
+                        }
+                    }
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 20)
+                    
+                    // Tab Selector
+                    HStack(spacing: 0) {
+                        ForEach(["Posts", "Likes"], id: \.self) { tab in
+                            Button(action: { 
+                                withAnimation { selectedTab = tab == "Posts" ? 0 : 1 }
+                            }) {
+                                VStack(spacing: 8) {
+                                    Image(systemName: tab == "Posts" ? "grid" : "heart")
+                                        .font(.system(size: 20))
+                                    Rectangle()
+                                        .fill(selectedTab == (tab == "Posts" ? 0 : 1) ? Color.primary : Color.clear)
+                                        .frame(height: 2)
+                                }
+                                .foregroundColor(selectedTab == (tab == "Posts" ? 0 : 1) ? .primary : .secondary)
                             }
+                            .frame(maxWidth: .infinity)
                         }
                     }
                     .padding(.horizontal)
-                    .padding(.top, 5)
                     
-                    Text("Bio coming soon")
-                        .font(.subheadline)
-                        .foregroundColor(.gray)
-                        .frame(maxWidth: .infinity, alignment: .leading)
+                    // Content
+                    if selectedTab == 0 {
+                        if userVideos.isEmpty {
+                            VStack(spacing: 12) {
+                                Image(systemName: "video.fill")
+                                    .font(.system(size: 40))
+                                    .foregroundColor(.secondary)
+                                    .padding(.top, 40)
+                                Text("No posts yet")
+                                    .font(.system(size: 16, weight: .medium))
+                                Text("Videos you post will appear here")
+                                    .font(.system(size: 14))
+                                    .foregroundColor(.secondary)
+                            }
+                            .frame(maxWidth: .infinity)
+                            .padding(.horizontal)
+                        } else {
+                            VideosGridSection(videos: userVideos, videoModel: videoModel)
+                                .padding(.top, 2)
+                        }
+                    } else {
+                        VStack(spacing: 12) {
+                            Image(systemName: "heart.fill")
+                                .font(.system(size: 40))
+                                .foregroundColor(.secondary)
+                                .padding(.top, 40)
+                            Text("No likes yet")
+                                .font(.system(size: 16, weight: .medium))
+                            Text("Videos you like will appear here")
+                                .font(.system(size: 14))
+                                .foregroundColor(.secondary)
+                        }
+                        .frame(maxWidth: .infinity)
                         .padding(.horizontal)
-                    
-                    // Videos Grid
-                    VideosGridSection(videos: userVideos, videoModel: videoModel)
+                    }
                 }
             }
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .navigationBarTrailing) {
                     NavigationLink(destination: SettingsView(model: authModel)) {
-                        Image(systemName: "gearshape.fill")
-                            .font(.title2)
+                        Image(systemName: "gearshape")
+                            .font(.system(size: 18))
+                            .foregroundColor(.primary)
                     }
                 }
             }
@@ -65,26 +122,12 @@ private struct StatItem: View {
     let title: String
     
     var body: some View {
-        VStack(spacing: 4) {
+        VStack(spacing: 2) {
             Text(value)
-                .font(.title3)
-                .fontWeight(.bold)
+                .font(.system(size: 16, weight: .semibold))
             Text(title)
-                .font(.caption)
-                .foregroundColor(.gray)
-        }
-    }
-}
-
-// MARK: - Stats Section
-private struct StatsSection: View {
-    let videosCount: Int
-    
-    var body: some View {
-        HStack(spacing: 30) {
-            StatItem(value: "\(videosCount)", title: "Posts")
-            StatItem(value: "0", title: "Followers")
-            StatItem(value: "0", title: "Following")
+                .font(.system(size: 13))
+                .foregroundColor(.secondary)
         }
     }
 }
