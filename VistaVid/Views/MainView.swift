@@ -64,7 +64,7 @@ struct MainView: View {
                     .clipShape(Circle())
                     .shadow(radius: 2)
             }
-            .offset(y: -32) // Move up from tab bar
+            .offset(y: -10) // Increased offset to have 70% of button overlay the tab bar
         }
         .fullScreenCover(isPresented: $showingCamera) {
             RecordingView()

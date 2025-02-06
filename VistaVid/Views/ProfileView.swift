@@ -137,26 +137,45 @@ struct CircularProfileImage: View {
     let size: CGFloat
     
     var body: some View {
-        AsyncImage(url: URL(string: user.profilePicUrl ?? "")) { phase in
-            switch phase {
-            case .empty:
-                ProgressView()
+        Group {
+            if let urlString = user.profilePicUrl,
+               let url = URL(string: urlString) {
+                // Debug log for URL validation
+                let _ = print("🖼️ [Profile]: Loading image from URL: \(urlString)")
+                
+                AsyncImage(url: url) { phase in
+                    switch phase {
+                    case .empty:
+                        ProgressView()
+                            .frame(width: size, height: size)
+                    case .success(let image):
+                        image
+                            .resizable()
+                            .scaledToFill()
+                            .frame(width: size, height: size)
+                    case .failure(let error):
+                        // Debug log for loading failures
+                        let _ = print("❌ [Profile]: Failed to load image: \(error.localizedDescription)")
+                        Image(systemName: "person.circle.fill")
+                            .resizable()
+                            .foregroundColor(.gray)
+                            .frame(width: size, height: size)
+                    @unknown default:
+                        Image(systemName: "person.circle.fill")
+                            .resizable()
+                            .foregroundColor(.gray)
+                            .frame(width: size, height: size)
+                    }
+                }
+            } else {
+                // Debug log for invalid URL
+                let _ = print("⚠️ [Profile]: Invalid profile image URL: \(user.profilePicUrl ?? "nil")")
+                Image(systemName: "person.circle.fill")
+                    .resizable()
+                    .foregroundColor(.gray)
                     .frame(width: size, height: size)
-            case .success(let image):
-                image
-                    .resizable()
-                    .scaledToFill()
-            case .failure(_):
-                Image(systemName: "person.circle.fill")
-                    .resizable()
-                    .foregroundColor(.gray)
-            @unknown default:
-                Image(systemName: "person.circle.fill")
-                    .resizable()
-                    .foregroundColor(.gray)
             }
         }
-        .frame(width: size, height: size)
         .clipShape(Circle())
         .overlay(
             Circle()

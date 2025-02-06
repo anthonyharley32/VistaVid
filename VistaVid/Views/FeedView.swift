@@ -263,6 +263,7 @@ struct VideoPlayerView: View {
                                             Circle()
                                                 .fill(Color.gray.opacity(0.5))
                                                 .frame(width: 50, height: 50)
+                                                .overlay(Circle().stroke(Color.white, lineWidth: 2))
                                         case .success(let image):
                                             image
                                                 .resizable()
@@ -278,10 +279,12 @@ struct VideoPlayerView: View {
                                                     Image(systemName: "person.fill")
                                                         .foregroundColor(.white)
                                                 )
+                                                .overlay(Circle().stroke(Color.white, lineWidth: 2))
                                         @unknown default:
                                             Circle()
                                                 .fill(Color.gray)
                                                 .frame(width: 50, height: 50)
+                                                .overlay(Circle().stroke(Color.white, lineWidth: 2))
                                         }
                                     }
                                 }
@@ -294,6 +297,7 @@ struct VideoPlayerView: View {
                                             Image(systemName: "person.fill")
                                                 .foregroundColor(.white)
                                         )
+                                        .overlay(Circle().stroke(Color.white, lineWidth: 2))
                                 }
                             }
                             
@@ -392,9 +396,27 @@ struct VideoPlayerView: View {
             return 
         }
         
-        // Load thumbnail first
-        if thumbnail == nil {
-            thumbnail = await thumbnailManager.thumbnail(for: videoURL)
+        // Load thumbnails concurrently
+        await withTaskGroup(of: Void.self) { group in
+            // Current thumbnail
+            if thumbnail == nil {
+                group.addTask {
+                    if let newThumbnail = await thumbnailManager.thumbnail(for: videoURL) {
+                        await MainActor.run {
+                            self.thumbnail = newThumbnail
+                        }
+                    }
+                }
+            }
+            
+            // Preload next thumbnail
+            if index + 1 < videoViewModel.videos.count,
+               let nextURL = videoViewModel.videos[index + 1].url {
+                group.addTask {
+                    _ = await thumbnailManager.thumbnail(for: nextURL)
+                }
+            }
+            await group.waitForAll()
         }
         
         isLoading = true
