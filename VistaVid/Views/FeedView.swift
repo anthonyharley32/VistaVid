@@ -151,17 +151,23 @@ struct VideoPlayerView: View {
     let videoManager: VideoPlayerManager
     let isVisible: Bool
     let onUserTap: () -> Void
-    @State private var isPlaying = true
     @State private var player: AVQueuePlayer?
     @State private var playerLooper: AVPlayerLooper?
+    @State private var isLoading = false
+    @State private var isPlaying = false
+    @State private var showPlaybackIndicator = false
+    @State private var thumbnail: UIImage?
+    @State private var isVideoReady = false
     @State private var isLiked = false
     @State private var showComments = false
+    
+    // Like, comment, share counts
     @State private var likesCount: Int
     @State private var commentsCount: Int
     @State private var sharesCount: Int
-    @State private var showPlaybackIndicator = false
+    
+    let thumbnailManager = ThumbnailManager()
     @Environment(\.videoViewModel) private var videoViewModel
-    @State private var isLoading = false
     
     init(video: Video, index: Int, videoManager: VideoPlayerManager, isVisible: Bool, onUserTap: @escaping () -> Void) {
         self.video = video
@@ -179,14 +185,23 @@ struct VideoPlayerView: View {
             ZStack {
                 Color.black.ignoresSafeArea()
                 
+                if let thumbnail = thumbnail {
+                    Image(uiImage: thumbnail)
+                        .resizable()
+                        .aspectRatio(contentMode: .fill)
+                        .frame(width: geometry.size.width, height: UIScreen.main.bounds.height)
+                        .clipped()
+                }
+                
                 if isLoading {
                     ProgressView()
                         .tint(.white)
                 }
                 
-                if let player = player, isVisible {
+                if let player = player, isVisible, isVideoReady {
                     CustomVideoPlayer(player: player)
                         .frame(width: geometry.size.width, height: UIScreen.main.bounds.height)
+                        .clipped()
                         .onAppear {
                             print(" [VideoPlayerView \(index)]: Player view appeared, isVisible: \(isVisible)")
                         }
@@ -371,51 +386,66 @@ struct VideoPlayerView: View {
     
     private func initializePlayerIfNeeded() async {
         print(" [VideoPlayerView \(index)]: START Initializing player")
-        guard player == nil, let videoURL = video.url else { return }
+        guard player == nil, 
+              let videoURL = video.url else { 
+            print(" [VideoPlayerView \(index)]: Invalid video URL")
+            return 
+        }
+        
+        // Load thumbnail first
+        if thumbnail == nil {
+            thumbnail = await thumbnailManager.thumbnail(for: videoURL)
+        }
         
         isLoading = true
         defer { isLoading = false }
         
-        do {
-            // Try to get preloaded asset first
-            let asset = videoManager.getPreloadedAsset(for: index) ?? AVURLAsset(url: videoURL)
-            
-            // Wait for asset to load if not preloaded
-            if videoManager.getPreloadedAsset(for: index) == nil {
-                print(" [VideoPlayerView \(index)]: Loading asset (not preloaded)")
-                _ = try await asset.load(.isPlayable)
-            } else {
-                print(" [VideoPlayerView \(index)]: Using preloaded asset")
+        // Try to get preloaded asset first
+        let asset = videoManager.getPreloadedAsset(for: index) ?? AVURLAsset(url: videoURL)
+        
+        // Wait for asset to load if not preloaded
+        if videoManager.getPreloadedAsset(for: index) == nil {
+            print(" [VideoPlayerView \(index)]: Loading asset (not preloaded)")
+            _ = try? await asset.load(.isPlayable)
+        } else {
+            print(" [VideoPlayerView \(index)]: Using preloaded asset")
+        }
+        
+        // Only proceed if still visible
+        guard isVisible else {
+            print(" [VideoPlayerView \(index)]: No longer visible during initialization")
+            return
+        }
+        
+        let item = AVPlayerItem(asset: asset)
+        let newPlayer = AVQueuePlayer(playerItem: item)
+        playerLooper = AVPlayerLooper(player: newPlayer, templateItem: item)
+        
+        // Configure player
+        newPlayer.isMuted = false
+        newPlayer.preventsDisplaySleepDuringVideoPlayback = true
+        
+        // Add observer for when the video is ready to play
+        let timeObserverToken = newPlayer.addPeriodicTimeObserver(forInterval: CMTime(seconds: 0.5, preferredTimescale: 600), queue: .main) { [weak newPlayer] _ in
+            guard let player = newPlayer else { return }
+            if !isVideoReady && player.currentItem?.status == .readyToPlay {
+                isVideoReady = true
+                print(" [VideoPlayerView \(index)]: Video is ready to play")
             }
-            
-            // Only proceed if still visible
-            guard isVisible else {
-                print(" [VideoPlayerView \(index)]: No longer visible during initialization")
-                return
-            }
-            
-            let item = AVPlayerItem(asset: asset)
-            let newPlayer = AVQueuePlayer(playerItem: item)
-            playerLooper = AVPlayerLooper(player: newPlayer, templateItem: item)
-            
-            // Configure player
-            newPlayer.isMuted = false
-            newPlayer.preventsDisplaySleepDuringVideoPlayback = true
-            
-            // Final visibility check before committing
-            if isVisible {
-                print(" [VideoPlayerView \(index)]: Setting up new player")
-                player = newPlayer
-                videoManager.register(player: newPlayer, for: index)
-                newPlayer.play()
-                isPlaying = true
-            } else {
-                print(" [VideoPlayerView \(index)]: Lost visibility during final setup")
-                newPlayer.pause()
-                playerLooper?.disableLooping()
-            }
-        } catch {
-            print(" [VideoPlayerView \(index)]: Failed to initialize player: \(error)")
+        }
+        
+        // Final visibility check before committing
+        if isVisible {
+            print(" [VideoPlayerView \(index)]: Setting up new player")
+            player = newPlayer
+            videoManager.register(player: newPlayer, for: index)
+            newPlayer.play()
+            isPlaying = true
+        } else {
+            print(" [VideoPlayerView \(index)]: Lost visibility during final setup")
+            newPlayer.pause()
+            playerLooper?.disableLooping()
+            newPlayer.removeTimeObserver(timeObserverToken)
         }
     }
     
@@ -537,7 +567,7 @@ final class VideoPlayerManager: ObservableObject {
     }
     
     private func preloadAdjacentVideos(around index: Int) async {
-        print(" [VideoPlayerManager]: START Preloading adjacent videos around index: \(index)")
+        print(" [VideoPlayerManager]: START Preloading adjacent videos around index \(index)")
         
         // Ensure we have videos to preload
         guard !videoViewModel.videos.isEmpty else {
@@ -570,15 +600,15 @@ final class VideoPlayerManager: ObservableObject {
                 continue
             }
             
-            // Skip if video URL is missing
+            // Skip if video URL is missing or invalid
             guard let videoURL = videoViewModel.videos[i].url else {
-                print(" [VideoPlayerManager]: No URL for video at index \(i)")
+                print(" [VideoPlayerManager]: Invalid URL for video at index \(i)")
                 continue
             }
             
+            print(" [VideoPlayerManager]: Preloading asset for index \(i)")
+            let asset = AVURLAsset(url: videoURL)
             do {
-                print(" [VideoPlayerManager]: Preloading asset for index \(i)")
-                let asset = AVURLAsset(url: videoURL)
                 _ = try await asset.load(.isPlayable)
                 preloadedAssets[i] = asset
                 print(" [VideoPlayerManager]: Successfully preloaded asset for index \(i)")
