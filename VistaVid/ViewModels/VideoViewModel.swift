@@ -89,6 +89,8 @@ final class VideoViewModel: ObservableObject {
         }
     }
     
+    // MARK: - Video Upload Methods
+    
     /// Uploads a new video
     func uploadVideo(videoURL: URL, description: String, algorithmTags: [String]) async throws {
         debugLog("📤 Starting video upload process")
@@ -119,11 +121,31 @@ final class VideoViewModel: ObservableObject {
             debugLog("⏱️ Video duration: \(durationInSeconds) seconds")
             debugLog("📏 Video file size: \(try Data(contentsOf: videoURL).count) bytes")
             
+            // Create initial Firestore document
+            debugLog("📝 Creating initial Firestore document")
+            let initialVideo = Video(
+                id: videoId,
+                userId: currentUser.uid,
+                videoUrl: "", // Will be updated after upload
+                thumbnailUrl: nil,
+                description: description,
+                createdAt: Date(),
+                algorithmTags: algorithmTags
+            )
+            var initialVideoDict = initialVideo.toDictionary()
+            initialVideoDict["status"] = "uploading" // Add status field
+            try await db.collection("videos").document(videoId).setData(initialVideoDict)
+            debugLog("✅ Created initial video document")
+            
             // Upload video data
             debugLog("📤 Starting video file upload")
             let videoData = try Data(contentsOf: videoURL)
             let metadata = StorageMetadata()
             metadata.contentType = "video/mp4"
+            metadata.customMetadata = [
+                "userId": currentUser.uid,
+                "videoId": videoId
+            ]
             
             debugLog("📤 Uploading to Firebase Storage...")
             _ = try await videoRef.putDataAsync(videoData, metadata: metadata)
@@ -132,31 +154,37 @@ final class VideoViewModel: ObservableObject {
             let videoDownloadURL = try await videoRef.downloadURL()
             debugLog("🔗 Video download URL: \(videoDownloadURL.absoluteString)")
             
+            // Update status to uploaded
+            try await db.collection("videos").document(videoId).updateData([
+                "status": "uploaded"
+            ])
+            debugLog("✅ Updated video status to uploaded")
+            
             // Generate and upload thumbnail
             debugLog("🖼️ Generating thumbnail")
             if let thumbnail = try await generateThumbnail(for: videoURL),
                let thumbnailData = thumbnail.jpegData(compressionQuality: 0.7) {
                 let thumbnailRef = storage.child("thumbnails/\(videoId).jpg")
+                let thumbnailMetadata = StorageMetadata()
+                thumbnailMetadata.contentType = "image/jpeg"
+                thumbnailMetadata.customMetadata = [
+                    "userId": currentUser.uid,
+                    "videoId": videoId
+                ]
+                
                 debugLog("📤 Uploading thumbnail")
-                try await thumbnailRef.putDataAsync(thumbnailData)
+                try await thumbnailRef.putDataAsync(thumbnailData, metadata: thumbnailMetadata)
                 let thumbnailUrl = try await thumbnailRef.downloadURL().absoluteString
                 debugLog("✅ Thumbnail uploaded successfully")
                 
-                // Create video document
-                debugLog("📝 Creating Firestore document")
-                let video = Video(
-                    id: videoId,
-                    userId: currentUser.uid,
-                    videoUrl: videoDownloadURL.absoluteString,
-                    thumbnailUrl: thumbnailUrl,
-                    description: description,
-                    createdAt: Date(),
-                    algorithmTags: algorithmTags
-                )
-                
-                // Save to Firestore
-                try await db.collection("videos").document(videoId).setData(video.toDictionary())
-                debugLog("✅ Video document created in Firestore")
+                // Update video document with URLs
+                debugLog("📝 Updating Firestore document with URLs")
+                let updateData: [String: String] = [
+                    "videoUrl": videoDownloadURL.absoluteString,
+                    "thumbnailUrl": thumbnailUrl
+                ]
+                try await db.collection("videos").document(videoId).updateData(updateData)
+                debugLog("✅ Video document updated with URLs")
                 debugLog("🎉 Upload process completed successfully")
             }
             

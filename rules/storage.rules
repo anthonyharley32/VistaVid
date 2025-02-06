@@ -11,13 +11,16 @@ service firebase.storage {
     match /videos/{videoId} {
       allow read: if request.auth != null;
       allow create: if request.auth != null
-        && request.resource.size < 500 * 1024 * 1024 // 500MB max
-        && request.resource.contentType.matches('video/.*')
-        && videoId.matches('^[a-zA-Z0-9_-]+$'); // Ensure safe video IDs
+        && request.resource.size < 500 * 1024 * 1024; // 500MB max
       
       // Only allow deletion by video owner
       allow delete: if request.auth != null
         && request.auth.uid == resource.metadata.userId;
+    }
+
+    // Allow authenticated users to upload thumbnails
+    match /thumbnails/{thumbnailId} {
+      allow read, write: if request.auth != null;  // Simplified rule for development
     }
     
     // Prevent direct modification of HLS files

@@ -15,6 +15,8 @@ struct Video: Identifiable, Codable {
     var commentsCount: Int
     var sharesCount: Int
     var businessData: BusinessData?
+    var status: String // Add status property
+    var hlsUrl: String? // Add HLS URL property
     
     var url: URL? {
         URL(string: videoUrl)
@@ -30,7 +32,7 @@ struct Video: Identifiable, Codable {
     enum CodingKeys: String, CodingKey {
         case id, userId, videoUrl, thumbnailUrl, description
         case createdAt, algorithmTags, likesCount, commentsCount
-        case sharesCount, businessData
+        case sharesCount, businessData, status, hlsUrl
     }
     
     init(from decoder: Decoder) throws {
@@ -54,6 +56,8 @@ struct Video: Identifiable, Codable {
         commentsCount = try container.decode(Int.self, forKey: .commentsCount)
         sharesCount = try container.decode(Int.self, forKey: .sharesCount)
         businessData = try container.decodeIfPresent(BusinessData.self, forKey: .businessData)
+        status = try container.decodeIfPresent(String.self, forKey: .status) ?? "uploaded"
+        hlsUrl = try container.decodeIfPresent(String.self, forKey: .hlsUrl)
     }
     
     func encode(to encoder: Encoder) throws {
@@ -70,6 +74,8 @@ struct Video: Identifiable, Codable {
         try container.encode(commentsCount, forKey: .commentsCount)
         try container.encode(sharesCount, forKey: .sharesCount)
         try container.encodeIfPresent(businessData, forKey: .businessData)
+        try container.encode(status, forKey: .status)
+        try container.encodeIfPresent(hlsUrl, forKey: .hlsUrl)
     }
     
     // MARK: - Custom Initialization
@@ -83,7 +89,9 @@ struct Video: Identifiable, Codable {
          likesCount: Int = 0,
          commentsCount: Int = 0,
          sharesCount: Int = 0,
-         businessData: BusinessData? = nil) {
+         businessData: BusinessData? = nil,
+         status: String = "uploading",
+         hlsUrl: String? = nil) {
         self.id = id
         self.userId = userId
         self.videoUrl = videoUrl
@@ -95,6 +103,8 @@ struct Video: Identifiable, Codable {
         self.commentsCount = commentsCount
         self.sharesCount = sharesCount
         self.businessData = businessData
+        self.status = status
+        self.hlsUrl = hlsUrl
     }
 }
 
@@ -127,7 +137,9 @@ extension Video {
             likesCount: data["likesCount"] as? Int ?? 0,
             commentsCount: data["commentsCount"] as? Int ?? 0,
             sharesCount: data["sharesCount"] as? Int ?? 0,
-            businessData: businessData
+            businessData: businessData,
+            status: data["status"] as? String ?? "uploaded",
+            hlsUrl: data["hlsUrl"] as? String
         )
     }
     
@@ -140,7 +152,8 @@ extension Video {
             "algorithmTags": algorithmTags,
             "likesCount": likesCount,
             "commentsCount": commentsCount,
-            "sharesCount": sharesCount
+            "sharesCount": sharesCount,
+            "status": status
         ]
         
         if let thumbnailUrl = thumbnailUrl {
@@ -152,6 +165,10 @@ extension Video {
                 "trendRating": businessData.trendRating,
                 "confidenceInterval": businessData.confidenceInterval
             ]
+        }
+        
+        if let hlsUrl = hlsUrl {
+            data["hlsUrl"] = hlsUrl
         }
         
         return data
