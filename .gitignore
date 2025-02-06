@@ -68,6 +68,6 @@ GoogleService-Info.plist
 injected_container.swift
 
 # Firebase Rules
-firebase-rules/
-.rules/
-rules/
+#firebase-rules/
+#.rules/
+#rules/

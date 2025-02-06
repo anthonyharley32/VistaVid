@@ -1,15 +1,64 @@
 import SwiftUI
 import AVKit
 
+// MARK: - Feed Content View
+private struct FeedContentView: View {
+    let geometry: GeometryProxy
+    let videos: [Video]
+    let videoManager: VideoPlayerManager
+    @Binding var currentIndex: Int?
+    @Binding var visibleIndex: Int?
+    @Binding var selectedUser: User?
+    let authModel: AuthenticationViewModel
+    
+    var body: some View {
+        ScrollView(.vertical, showsIndicators: false) {
+            LazyVStack(spacing: 0) {
+                ForEach(Array(videos.enumerated()), id: \.element.id) { index, video in
+                    VideoPlayerView(video: video, 
+                                  index: index, 
+                                  videoManager: videoManager,
+                                  isVisible: visibleIndex == index,
+                                  onUserTap: { handleUserTap(video: video) })
+                        .frame(width: geometry.size.width, height: geometry.size.height)
+                        .onAppear {
+                            print(" [FeedView]: Video \(index) appeared")
+                            if currentIndex == nil {
+                                currentIndex = index
+                                visibleIndex = index
+                            }
+                        }
+                        .modifier(VisibilityModifier(index: index, currentVisibleIndex: $visibleIndex))
+                        .onDisappear {
+                            print(" [FeedView]: Video \(index) disappeared")
+                        }
+                }
+            }
+        }
+        .scrollTargetBehavior(.paging)
+        .scrollPosition(id: $currentIndex)
+    }
+    
+    private func handleUserTap(video: Video) {
+        if video.user?.id == authModel.currentUser?.id {
+            print(" [FeedView]: Navigating to You tab")
+            NotificationCenter.default.post(name: NSNotification.Name("NavigateToYouTab"), object: nil)
+        } else {
+            print(" [FeedView]: Navigating to UserProfileView")
+            selectedUser = video.user
+        }
+    }
+}
+
 struct FeedView: View {
     @StateObject private var viewModel = VideoViewModel()
     @StateObject private var videoManager = VideoPlayerManager()
     @State private var currentIndex: Int?
     @State private var visibleIndex: Int?
     @ObservedObject var authModel: AuthenticationViewModel
+    @State private var selectedUser: User?
     @State private var currentlyPlayingVideo: String? = nil
     @State private var isPaused = false
-    @State private var selectedUser: User?
     
     init(authModel: AuthenticationViewModel) {
         self.authModel = authModel
@@ -25,75 +74,15 @@ struct FeedView: View {
                     Text("No videos available")
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
                 } else {
-                    ScrollView(.vertical, showsIndicators: false) {
-                        LazyVStack(spacing: 0) {
-                            ForEach(Array(viewModel.videos.enumerated()), id: \.element.id) { index, video in
-                                VideoPlayerView(video: video, 
-                                              index: index, 
-                                              videoManager: videoManager,
-                                              isVisible: visibleIndex == index)
-                                    .frame(width: geometry.size.width, height: geometry.size.height)
-                                    .onAppear {
-                                        print(" [FeedView]: Video \(index) appeared")
-                                        if currentIndex == nil {
-                                            currentIndex = index
-                                            visibleIndex = index
-                                        }
-                                    }
-                                    .onTapGesture { location in
-                                        let frame = CGRect(x: 0, y: 0, width: geometry.size.width, height: geometry.size.height)
-                                        
-                                        // Use relative dimensions
-                                        let rightSideWidth = frame.width * 0.2 // 20% of screen width
-                                        let engagementAreaHeight = frame.height * 0.4 // 40% of screen height
-                                        
-                                        // Profile picture area (just above like button)
-                                        let profileStartY = frame.height - engagementAreaHeight // Start of engagement area
-                                        let profileHeight = frame.height * 0.1 // Height for profile picture area
-                                        
-                                        print(" [FeedView]: Tap location - x: \(location.x), y: \(location.y)")
-                                        print(" [FeedView]: Frame - width: \(frame.width), height: \(frame.height)")
-                                        print(" [FeedView]: Profile area - right: \(frame.width - rightSideWidth), y: \(profileStartY)")
-                                        
-                                        // Check tap zones
-                                        let isInEngagementArea = location.x > (frame.width - rightSideWidth) && 
-                                                           location.y > profileStartY
-                                        let isInProfileArea = location.x > (frame.width - rightSideWidth) && 
-                                                        location.y > profileStartY &&
-                                                        location.y < (profileStartY + profileHeight)
-                                        
-                                        print(" [FeedView]: isInProfileArea: \(isInProfileArea)")
-                                        print(" [FeedView]: Current user id: \(String(describing: authModel.currentUser?.id))")
-                                        print(" [FeedView]: Video user id: \(String(describing: video.user?.id))")
-                                        
-                                        if isInProfileArea {
-                                            // Navigate to You tab
-                                            if video.user?.id == authModel.currentUser?.id {
-                                                print(" [FeedView]: Navigating to You tab")
-                                                NotificationCenter.default.post(name: NSNotification.Name("NavigateToYouTab"), object: nil)
-                                            } else {
-                                                // Navigate to UserProfileView
-                                                print(" [FeedView]: Navigating to UserProfileView")
-                                                selectedUser = video.user
-                                            }
-                                        } else if !isInEngagementArea {
-                                            isPaused.toggle()
-                                            NotificationCenter.default.post(
-                                                name: NSNotification.Name("TogglePlayback"),
-                                                object: nil,
-                                                userInfo: ["videoId": video.id]
-                                            )
-                                        }
-                                    }
-                                    .modifier(VisibilityModifier(index: index, currentVisibleIndex: $visibleIndex))
-                                    .onDisappear {
-                                        print(" [FeedView]: Video \(index) disappeared")
-                                    }
-                            }
-                        }
-                    }
-                    .scrollTargetBehavior(.paging)
-                    .scrollPosition(id: $currentIndex)
+                    FeedContentView(
+                        geometry: geometry,
+                        videos: viewModel.videos,
+                        videoManager: videoManager,
+                        currentIndex: $currentIndex,
+                        visibleIndex: $visibleIndex,
+                        selectedUser: $selectedUser,
+                        authModel: authModel
+                    )
                     .onChange(of: visibleIndex) { oldValue, newValue in
                         print(" [FeedView]: Visible index changed from \(String(describing: oldValue)) to \(String(describing: newValue))")
                         if let index = newValue {
@@ -105,7 +94,6 @@ struct FeedView: View {
                     .onDisappear {
                         videoManager.cleanup()
                     }
-                    .ignoresSafeArea()
                 }
             }
             .background(Color(.systemBackground))
@@ -117,7 +105,7 @@ struct FeedView: View {
                     await viewModel.loadVideos()
                 }
             }
-            .sheet(item: $selectedUser) { user in
+            .navigationDestination(item: $selectedUser) { user in
                 UserProfileView(user: user)
             }
         }
@@ -162,7 +150,7 @@ struct VideoPlayerView: View {
     let index: Int
     let videoManager: VideoPlayerManager
     let isVisible: Bool
-    
+    let onUserTap: () -> Void
     @State private var isPlaying = true
     @State private var player: AVQueuePlayer?
     @State private var playerLooper: AVPlayerLooper?
@@ -175,11 +163,12 @@ struct VideoPlayerView: View {
     @Environment(\.videoViewModel) private var videoViewModel
     @State private var isLoading = false
     
-    init(video: Video, index: Int, videoManager: VideoPlayerManager, isVisible: Bool) {
+    init(video: Video, index: Int, videoManager: VideoPlayerManager, isVisible: Bool, onUserTap: @escaping () -> Void) {
         self.video = video
         self.index = index
         self.videoManager = videoManager
         self.isVisible = isVisible
+        self.onUserTap = onUserTap
         _likesCount = State(initialValue: video.likesCount)
         _commentsCount = State(initialValue: video.commentsCount)
         _sharesCount = State(initialValue: video.sharesCount)
@@ -252,7 +241,7 @@ struct VideoPlayerView: View {
                             // Profile picture
                             if let profilePicUrl = video.user?.profilePicUrl,
                                let url = URL(string: profilePicUrl) {
-                                NavigationLink(destination: UserProfileView(user: video.user!)) {
+                                Button(action: onUserTap) {
                                     AsyncImage(url: url) { phase in
                                         switch phase {
                                         case .empty:
@@ -280,18 +269,17 @@ struct VideoPlayerView: View {
                                                 .frame(width: 50, height: 50)
                                         }
                                     }
-                                    .onTapGesture {
-                                        print("🔍 Profile tapped for user: \(video.user?.username ?? "unknown")")
-                                    }
                                 }
                             } else {
-                                Circle()
-                                    .fill(Color.gray.opacity(0.5))
-                                    .frame(width: 50, height: 50)
-                                    .overlay(
-                                        Image(systemName: "person.fill")
-                                            .foregroundColor(.white)
-                                    )
+                                Button(action: onUserTap) {
+                                    Circle()
+                                        .fill(Color.gray.opacity(0.5))
+                                        .frame(width: 50, height: 50)
+                                        .overlay(
+                                            Image(systemName: "person.fill")
+                                                .foregroundColor(.white)
+                                        )
+                                }
                             }
                             
                             // Like button
@@ -382,19 +370,23 @@ struct VideoPlayerView: View {
     }
     
     private func initializePlayerIfNeeded() async {
-        print(" [VideoPlayerView \(index)]: START Initializing player, current player exists: \(player != nil)")
+        print(" [VideoPlayerView \(index)]: START Initializing player")
         guard player == nil, let videoURL = video.url else { return }
         
         isLoading = true
         defer { isLoading = false }
         
         do {
-            print(" [VideoPlayerView \(index)]: Creating new player")
-            let asset = AVURLAsset(url: videoURL)
+            // Try to get preloaded asset first
+            let asset = videoManager.getPreloadedAsset(for: index) ?? AVURLAsset(url: videoURL)
             
-            // Wait for asset to load
-            print(" [VideoPlayerView \(index)]: Loading asset")
-            _ = try await asset.load(.isPlayable)
+            // Wait for asset to load if not preloaded
+            if videoManager.getPreloadedAsset(for: index) == nil {
+                print(" [VideoPlayerView \(index)]: Loading asset (not preloaded)")
+                _ = try await asset.load(.isPlayable)
+            } else {
+                print(" [VideoPlayerView \(index)]: Using preloaded asset")
+            }
             
             // Only proceed if still visible
             guard isVisible else {
@@ -425,8 +417,6 @@ struct VideoPlayerView: View {
         } catch {
             print(" [VideoPlayerView \(index)]: Failed to initialize player: \(error)")
         }
-        
-        print(" [VideoPlayerView \(index)]: END Initializing player")
     }
     
     private func cleanupPlayer() {
@@ -508,13 +498,14 @@ struct VideoPlayerView: View {
 @MainActor
 final class VideoPlayerManager: ObservableObject {
     private var players: [Int: AVQueuePlayer] = [:]
+    private var preloadedAssets: [Int: AVURLAsset] = [:]
     private var currentIndex: Int?
     private var timeObserverTokens: [Int: Any] = [:]
+    private let preloadWindow = 2
+    @Environment(\.videoViewModel) private var videoViewModel: VideoViewModel
     
     func register(player: AVQueuePlayer, for index: Int) {
         print(" [VideoPlayerManager]: START Registering player for index: \(index)")
-        print(" [VideoPlayerManager]: Current active players: \(players.keys.sorted())")
-        print(" [VideoPlayerManager]: Current index before: \(String(describing: currentIndex))")
         
         // Remove any existing player for this index
         unregister(index: index)
@@ -524,12 +515,7 @@ final class VideoPlayerManager: ObservableObject {
             forInterval: CMTime(seconds: 0.5, preferredTimescale: 600),
             queue: .main
         ) { [weak player] _ in
-            guard let player = player else {
-                print(" [VideoPlayerManager]: Player \(index) was deallocated")
-                return
-            }
-            
-            print(" [VideoPlayerManager]: Player \(index) status - Rate: \(player.rate), Time Control Status: \(player.timeControlStatus.rawValue)")
+            guard let player = player else { return }
             if player.timeControlStatus == .playing {
                 print(" [VideoPlayerManager]: Player \(index) is actively playing")
             }
@@ -538,72 +524,116 @@ final class VideoPlayerManager: ObservableObject {
         // Store the new player and its observer
         players[index] = player
         timeObserverTokens[index] = timeObserver
+        currentIndex = index
         
-        print(" [VideoPlayerManager]: END Registering player for index: \(index)")
-        print(" [VideoPlayerManager]: Updated active players: \(players.keys.sorted())")
+        // Preload adjacent videos
+        Task {
+            await preloadAdjacentVideos(around: index)
+        }
+    }
+    
+    func getPreloadedAsset(for index: Int) -> AVURLAsset? {
+        return preloadedAssets[index]
+    }
+    
+    private func preloadAdjacentVideos(around index: Int) async {
+        print(" [VideoPlayerManager]: START Preloading adjacent videos around index: \(index)")
+        
+        // Ensure we have videos to preload
+        guard !videoViewModel.videos.isEmpty else {
+            print(" [VideoPlayerManager]: No videos to preload")
+            return
+        }
+        
+        // Calculate preload range with bounds checking
+        let startIndex = max(0, index - preloadWindow)
+        let endIndex = min(videoViewModel.videos.count - 1, index + preloadWindow)
+        
+        // Validate range
+        guard startIndex <= endIndex else {
+            print(" [VideoPlayerManager]: Invalid range: start(\(startIndex)) > end(\(endIndex))")
+            return
+        }
+        
+        // Clean up assets outside the preload window
+        let indicesToRemove = preloadedAssets.keys.filter { $0 < startIndex || $0 > endIndex }
+        for oldIndex in indicesToRemove {
+            preloadedAssets.removeValue(forKey: oldIndex)
+            print(" [VideoPlayerManager]: Removed preloaded asset for index \(oldIndex)")
+        }
+        
+        // Preload assets within the window
+        for i in startIndex...endIndex {
+            // Skip if already preloaded
+            guard preloadedAssets[i] == nil else {
+                print(" [VideoPlayerManager]: Asset already preloaded for index \(i)")
+                continue
+            }
+            
+            // Skip if video URL is missing
+            guard let videoURL = videoViewModel.videos[i].url else {
+                print(" [VideoPlayerManager]: No URL for video at index \(i)")
+                continue
+            }
+            
+            do {
+                print(" [VideoPlayerManager]: Preloading asset for index \(i)")
+                let asset = AVURLAsset(url: videoURL)
+                _ = try await asset.load(.isPlayable)
+                preloadedAssets[i] = asset
+                print(" [VideoPlayerManager]: Successfully preloaded asset for index \(i)")
+            } catch {
+                print(" [VideoPlayerManager]: Failed to preload asset for index \(i): \(error)")
+            }
+        }
+        
+        print(" [VideoPlayerManager]: END Preloading adjacent videos")
     }
     
     func unregister(index: Int) {
         print(" [VideoPlayerManager]: START Unregistering player for index: \(index)")
-        print(" [VideoPlayerManager]: Current active players before unregister: \(players.keys.sorted())")
         
         if let player = players[index] {
-            print(" [VideoPlayerManager]: Found player for index \(index)")
             // Remove time observer
             if let token = timeObserverTokens[index] {
-                print(" [VideoPlayerManager]: Removing time observer for index \(index)")
                 player.removeTimeObserver(token)
                 timeObserverTokens.removeValue(forKey: index)
             }
             
             // Cleanup player
-            print(" [VideoPlayerManager]: Pausing player \(index)")
             player.pause()
-            print(" [VideoPlayerManager]: Clearing items for player \(index)")
             player.replaceCurrentItem(with: nil)
             player.removeAllItems()
-        } else {
-            print(" [VideoPlayerManager]: No player found for index \(index)")
         }
         
         players.removeValue(forKey: index)
         
         if currentIndex == index {
-            print(" [VideoPlayerManager]: Clearing current index \(index)")
             currentIndex = nil
         }
-        
-        print(" [VideoPlayerManager]: END Unregistering player for index: \(index)")
-        print(" [VideoPlayerManager]: Remaining active players: \(players.keys.sorted())")
     }
     
     func pauseAllExcept(index: Int) {
-        print(" [VideoPlayerManager]: START PauseAllExcept index: \(index)")
-        print(" [VideoPlayerManager]: Current active players: \(players.keys.sorted())")
-        print(" [VideoPlayerManager]: Current index before: \(String(describing: currentIndex))")
-        
         // First, cleanup all players except the target index
         let playersToRemove = players.keys.filter { $0 != index }
         for playerIndex in playersToRemove {
-            print(" [VideoPlayerManager]: Force cleaning up player \(playerIndex)")
             unregister(index: playerIndex)
         }
         
         // Now handle the current player
         if let player = players[index] {
-            print(" [VideoPlayerManager]: Setting up current player \(index)")
             player.seek(to: .zero)
             player.play()
             currentIndex = index
+            
+            // Preload adjacent videos
+            Task {
+                await preloadAdjacentVideos(around: index)
+            }
         }
-        
-        print(" [VideoPlayerManager]: END PauseAllExcept - Current index after: \(String(describing: currentIndex))")
-        print(" [VideoPlayerManager]: Final active players: \(players.keys.sorted())")
     }
     
     func cleanup() {
-        print(" [VideoPlayerManager]: Cleaning up all players")
-        
         // Remove all time observers and cleanup players
         for (index, player) in players {
             if let token = timeObserverTokens[index] {
@@ -616,6 +646,7 @@ final class VideoPlayerManager: ObservableObject {
         
         players.removeAll()
         timeObserverTokens.removeAll()
+        preloadedAssets.removeAll()
         currentIndex = nil
     }
 }

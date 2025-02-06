@@ -115,5 +115,3 @@ You are building an AI app that is a clone of TikTok.
 - Use Firebase Auth for user authentication.
 - Use Firebase Firestore for data storage.
 - Use Firebase Storage for file storage.
-- Use Firebase Analytics for analytics.
-- Use Firebase Crashlytics for crash reporting.

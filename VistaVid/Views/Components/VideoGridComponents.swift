@@ -16,7 +16,11 @@ struct VideosGridSection: View {
     var body: some View {
         LazyVGrid(columns: columns, spacing: 2) {
             ForEach(0..<videos.count, id: \.self) { index in
-                NavigationLink(destination: VideoPlayerView(video: videos[index], index: index, videoManager: videoManager, isVisible: true)) {
+                NavigationLink(destination: VideoPlayerView(video: videos[index], 
+                                                         index: index, 
+                                                         videoManager: videoManager, 
+                                                         isVisible: true,
+                                                         onUserTap: {})) {
                     VideoThumbnail(video: videos[index])
                 }
             }

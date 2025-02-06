@@ -3,9 +3,11 @@ import FirebaseAuth
 import AVKit
 
 struct UserProfileView: View {
-    @Environment(\.dismiss) private var dismiss
-    @StateObject var videoModel = VideoViewModel()
+    @State private var videoModel = VideoViewModel()
+    @State private var followModel = FollowViewModel()
+    @State private var messageModel = MessageViewModel()
     @State private var userVideos: [Video] = []
+    @State private var navigateToChat = false
     let user: User
     
     var body: some View {
@@ -21,10 +23,42 @@ struct UserProfileView: View {
                     // Stats
                     HStack(spacing: 35) {
                         StatItem(value: "\(userVideos.count)", title: "Videos")
-                        StatItem(value: "0", title: "Following")
-                        StatItem(value: "0", title: "Followers")
+                        StatItem(value: "\(followModel.followingCount)", title: "Following")
+                        StatItem(value: "\(followModel.followersCount)", title: "Followers")
                     }
                     .padding(.top, 5)
+                    
+                    // Action Buttons
+                    HStack(spacing: 12) {
+                        Button(action: {
+                            Task {
+                                do {
+                                    try await followModel.toggleFollow(for: user.id)
+                                } catch {
+                                    print("❌ Error toggling follow: \(error.localizedDescription)")
+                                }
+                            }
+                        }) {
+                            Text(followModel.isFollowing ? "Following" : "Follow")
+                                .font(.system(size: 16, weight: .semibold))
+                                .foregroundColor(followModel.isFollowing ? .secondary : .white)
+                                .frame(width: 120, height: 36)
+                                .background(followModel.isFollowing ? Color.gray.opacity(0.1) : Color.blue)
+                                .cornerRadius(18)
+                        }
+                        
+                        Button(action: {
+                            navigateToChat = true
+                        }) {
+                            Image(systemName: "message")
+                                .font(.system(size: 16, weight: .semibold))
+                                .foregroundColor(.primary)
+                                .frame(width: 36, height: 36)
+                                .background(Color.gray.opacity(0.1))
+                                .cornerRadius(18)
+                        }
+                    }
+                    .padding(.top, 10)
                 }
                 .padding(.top, 20)
                 
@@ -34,19 +68,19 @@ struct UserProfileView: View {
             }
         }
         .navigationBarTitleDisplayMode(.inline)
-        .toolbar {
-            ToolbarItem(placement: .navigationBarLeading) {
-                Button(action: { dismiss() }) {
-                    Image(systemName: "chevron.left")
-                        .foregroundColor(.primary)
-                }
-            }
+        .navigationTitle("@\(user.username)")
+        .navigationDestination(isPresented: $navigateToChat) {
+            ChatView(recipient: user)
         }
         .onAppear {
             print("👤 UserProfileView appeared for user: \(user.username)")
             Task {
                 await loadUserVideos()
+                followModel.startObservingFollowStatus(for: user.id)
             }
+        }
+        .onDisappear {
+            followModel.cleanup()
         }
     }
     
@@ -57,6 +91,85 @@ struct UserProfileView: View {
             print("✅ Successfully fetched \(videos.count) videos for user: \(user.username)")
         } else {
             print("❌ Failed to fetch videos for user: \(user.username)")
+        }
+    }
+}
+
+// MARK: - DM View
+private struct DMView: View {
+    let recipient: User
+    let messageModel: MessageViewModel
+    @Environment(\.dismiss) private var dismiss
+    @State private var messageText = ""
+    @State private var isLoading = false
+    
+    var body: some View {
+        NavigationStack {
+            VStack {
+                ScrollView {
+                    LazyVStack(spacing: 12) {
+                        ForEach(messageModel.messages) { message in
+                            MessageBubble(message: message, isFromCurrentUser: message.senderId == Auth.auth().currentUser?.uid)
+                                .padding(.horizontal)
+                        }
+                    }
+                    .padding(.vertical)
+                }
+                
+                // Message input
+                HStack {
+                    TextField("Message...", text: $messageText)
+                        .textFieldStyle(.roundedBorder)
+                        .disabled(isLoading)
+                    
+                    Button(action: {
+                        Task {
+                            isLoading = true
+                            do {
+                                try await messageModel.sendMessage(messageText, to: recipient.id)
+                                messageText = ""
+                            } catch {
+                                print("❌ Error sending message: \(error.localizedDescription)")
+                            }
+                            isLoading = false
+                        }
+                    }) {
+                        Image(systemName: "paperplane.fill")
+                            .foregroundColor(.blue)
+                    }
+                    .disabled(messageText.isEmpty || isLoading)
+                }
+                .padding()
+            }
+            .navigationTitle("Chat with @\(recipient.username)")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarLeading) {
+                    Button("Cancel") {
+                        dismiss()
+                    }
+                }
+            }
+        }
+    }
+}
+
+// MARK: - Message Bubble
+private struct MessageBubble: View {
+    let message: Message
+    let isFromCurrentUser: Bool
+    
+    var body: some View {
+        HStack {
+            if isFromCurrentUser { Spacer() }
+            
+            Text(message.content)
+                .padding(12)
+                .background(isFromCurrentUser ? Color.blue : Color.gray.opacity(0.2))
+                .foregroundColor(isFromCurrentUser ? .white : .primary)
+                .cornerRadius(16)
+            
+            if !isFromCurrentUser { Spacer() }
         }
     }
 }

@@ -34,14 +34,14 @@ struct MainView: View {
                     }
                     .tag(2)
                 
-                // Inbox Tab (Empty for now)
-                Color.clear
+                // Inbox Tab
+                InboxView()
                     .tabItem {
                         Label("Inbox", systemImage: "envelope.fill")
                     }
                     .tag(3)
                 
-                // You Tab (Previously Profile)
+                // Profile Tab
                 ProfileView(user: authModel.currentUser ?? User.placeholder, authModel: authModel)
                     .tabItem {
                         Label("You", systemImage: "person.fill")

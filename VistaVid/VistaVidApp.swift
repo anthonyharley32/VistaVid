@@ -70,7 +70,7 @@ class AppDelegate: NSObject, UIApplicationDelegate {
             print("📱 App name: \(app.name)")
             
             // Test Firestore access
-            let db = Firestore.firestore()
+            _ = Firestore.firestore()
             print("📚 Firestore instance created")
             
             // Test Auth access

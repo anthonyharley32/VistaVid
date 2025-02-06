@@ -3,7 +3,7 @@ import FirebaseAuth
 import FirebaseFirestore
 
 // User model that matches the Firestore data structure
-class User: Identifiable, Codable {
+class User: Identifiable, Codable, Hashable {
     // MARK: - Properties
     let id: String
     var username: String
@@ -12,6 +12,8 @@ class User: Identifiable, Codable {
     var profilePicUrl: String?
     var isBusiness: Bool
     var selectedAlgorithms: [String]
+    var followersCount: Int
+    var followingCount: Int
     
     // MARK: - Codable Keys
     enum CodingKeys: String, CodingKey {
@@ -22,10 +24,12 @@ class User: Identifiable, Codable {
         case createdAt
         case isBusiness
         case selectedAlgorithms
+        case followersCount
+        case followingCount
     }
     
     // MARK: - Initialization
-    init(id: String, username: String, email: String, createdAt: Date, profilePicUrl: String? = nil, isBusiness: Bool = false, selectedAlgorithms: [String] = []) {
+    init(id: String, username: String, email: String, createdAt: Date, profilePicUrl: String? = nil, isBusiness: Bool = false, selectedAlgorithms: [String] = [], followersCount: Int = 0, followingCount: Int = 0) {
         self.id = id
         self.username = username
         self.email = email
@@ -33,6 +37,8 @@ class User: Identifiable, Codable {
         self.profilePicUrl = profilePicUrl
         self.isBusiness = isBusiness
         self.selectedAlgorithms = selectedAlgorithms
+        self.followersCount = followersCount
+        self.followingCount = followingCount
     }
     
     // Create a User from Firebase Auth user
@@ -44,7 +50,9 @@ class User: Identifiable, Codable {
             createdAt: Date(),
             profilePicUrl: user.photoURL?.absoluteString,
             isBusiness: false,
-            selectedAlgorithms: []
+            selectedAlgorithms: [],
+            followersCount: 0,
+            followingCount: 0
         )
     }
     
@@ -63,7 +71,9 @@ class User: Identifiable, Codable {
             createdAt: createdAt,
             profilePicUrl: data["profilePicUrl"] as? String,
             isBusiness: data["isBusiness"] as? Bool ?? false,
-            selectedAlgorithms: data["selectedAlgorithms"] as? [String] ?? []
+            selectedAlgorithms: data["selectedAlgorithms"] as? [String] ?? [],
+            followersCount: data["followersCount"] as? Int ?? 0,
+            followingCount: data["followingCount"] as? Int ?? 0
         )
     }
     
@@ -75,8 +85,19 @@ class User: Identifiable, Codable {
         createdAt: Date(),
         profilePicUrl: nil,
         isBusiness: false,
-        selectedAlgorithms: []
+        selectedAlgorithms: [],
+        followersCount: 0,
+        followingCount: 0
     )
+    
+    // MARK: - Hashable & Equatable
+    static func == (lhs: User, rhs: User) -> Bool {
+        lhs.id == rhs.id
+    }
+    
+    func hash(into hasher: inout Hasher) {
+        hasher.combine(id)
+    }
 }
 
 // MARK: - Helper Methods
@@ -88,7 +109,9 @@ extension User {
             "email": email,
             "createdAt": Timestamp(date: createdAt),
             "isBusiness": isBusiness,
-            "selectedAlgorithms": selectedAlgorithms
+            "selectedAlgorithms": selectedAlgorithms,
+            "followersCount": followersCount,
+            "followingCount": followingCount
         ]
         
         if let profilePicUrl = profilePicUrl {
@@ -97,4 +120,4 @@ extension User {
         
         return data
     }
-} 
+}

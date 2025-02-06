@@ -524,4 +524,4 @@ final class VideoViewModel: ObservableObject {
             print("🎥 [Video]: \(message)")
         }
     }
-} 
+}

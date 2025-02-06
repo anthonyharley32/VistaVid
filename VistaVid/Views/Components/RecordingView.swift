@@ -4,9 +4,12 @@ import AVFoundation
 struct RecordingView: View {
     // MARK: - Properties
     @StateObject private var cameraManager = CameraManager()
+    @Environment(\.videoViewModel) private var videoViewModel
     @State private var showingDescriptionSheet = false
     @State private var description = ""
     @State private var selectedAlgorithmTags: [String] = []
+    @State private var isUploading = false
+    @State private var uploadError: Error?
     @Environment(\.scenePhase) private var scenePhase
     @Environment(\.dismiss) private var dismiss
     @Environment(\.presentationMode) private var presentationMode
@@ -126,16 +129,41 @@ struct RecordingView: View {
                     // Upload button
                     Button(action: {
                         Task {
-                            guard let videoURL = cameraManager.lastRecordedVideoURL else { return }
-                            // TODO: Upload video
-                            showingDescriptionSheet = false
-                            description = ""
+                            guard let videoURL = cameraManager.lastRecordedVideoURL else {
+                                print("❌ [RecordingView]: No video URL available")
+                                return
+                            }
+                            
+                            isUploading = true
+                            defer { isUploading = false }
+                            
+                            do {
+                                print("📤 [RecordingView]: Starting video upload")
+                                try await videoViewModel.uploadVideo(
+                                    videoURL: videoURL,
+                                    description: description,
+                                    algorithmTags: selectedAlgorithmTags
+                                )
+                                print("✅ [RecordingView]: Video upload successful")
+                                showingDescriptionSheet = false
+                                description = ""
+                                dismiss()
+                            } catch {
+                                print("❌ [RecordingView]: Upload failed - \(error.localizedDescription)")
+                                uploadError = error
+                            }
                         }
                     }) {
                         HStack {
-                            Text("Post")
-                                .fontWeight(.semibold)
-                            Image(systemName: "arrow.up.circle.fill")
+                            if isUploading {
+                                ProgressView()
+                                    .progressViewStyle(CircularProgressViewStyle(tint: .white))
+                                    .frame(width: 20, height: 20)
+                            } else {
+                                Text("Post")
+                                    .fontWeight(.semibold)
+                                Image(systemName: "arrow.up.circle.fill")
+                            }
                         }
                         .frame(maxWidth: .infinity)
                         .padding()
@@ -143,7 +171,7 @@ struct RecordingView: View {
                         .foregroundColor(.white)
                         .clipShape(RoundedRectangle(cornerRadius: 14))
                     }
-                    .disabled(description.isEmpty)
+                    .disabled(description.isEmpty || isUploading)
                     .padding(.horizontal)
                     
                     Spacer()
@@ -523,4 +551,5 @@ extension RecordingView {
 
 #Preview {
     RecordingView()
+        .environment(\.videoViewModel, VideoViewModel())
 }
