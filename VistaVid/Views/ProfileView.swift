@@ -1,40 +1,34 @@
 import SwiftUI
 import FirebaseAuth
-import UIKit  // For UIImage type
+import AVKit
 
 struct ProfileView: View {
-    @ObservedObject var model: AuthenticationViewModel
-    @State private var showingAlert = false
-    @State private var alertMessage = ""
+    let model: AuthenticationViewModel
+    @StateObject private var videoModel = VideoViewModel()
+    
+    // MARK: - Properties
+    @State private var showingSettings = false
+    @State private var userVideos: [Video] = []
+    @State private var isLoadingVideos = false
+    @State private var error: Error?
     
     var body: some View {
         NavigationView {
-            List {
-                // Profile Header Section
-                Section {
-                    ProfileHeaderView(model: model)
-                }
-                
-                // Content Rules
-                Section {
-                    ContentRulesView(model: model)
-                } header: {
-                    Text("Content Rules")
-                } footer: {
-                    Text("Create custom rules to personalize your feed")
-                }
-                
-                // Account Settings
-                Section("Account Settings") {
-                    BusinessAccountToggle(model: model, showingAlert: $showingAlert, alertMessage: $alertMessage)
-                }
-                
-                // Sign Out Button
-                Section {
-                    SignOutButton(model: model, showingAlert: $showingAlert, alertMessage: $alertMessage)
+            ScrollView {
+                VStack(spacing: 20) {
+                    // Profile Header
+                    ProfileHeaderSection(model: model)
+                        .padding(.horizontal)
+                    
+                    // Stats Section
+                    StatsSection(videosCount: userVideos.count)
+                        .padding(.horizontal)
+                    
+                    // Videos Grid
+                    VideosGridSection(videos: userVideos, videoModel: videoModel)
                 }
             }
-            .navigationTitle("You")
+            .navigationTitle("Profile")
             .toolbar {
                 ToolbarItem(placement: .navigationBarTrailing) {
                     NavigationLink(destination: SettingsView(model: model)) {
@@ -43,66 +37,65 @@ struct ProfileView: View {
                     }
                 }
             }
-            .alert("Error", isPresented: $showingAlert) {
-                Button("OK", role: .cancel) {}
-            } message: {
-                Text(alertMessage)
+            .task {
+                await loadUserVideos()
             }
+            .refreshable {
+                await loadUserVideos()
+            }
+        }
+    }
+    
+    private func loadUserVideos() async {
+        guard let userId = model.currentUser?.id else { return }
+        
+        isLoadingVideos = true
+        defer { isLoadingVideos = false }
+        
+        do {
+            userVideos = try await videoModel.fetchUserVideos(userId: userId)
+        } catch {
+            print("❌ Error loading user videos: \(error)")
+            self.error = error
         }
     }
 }
 
-// MARK: - Profile Header View
-struct ProfileHeaderView: View {
-    @ObservedObject var model: AuthenticationViewModel
+// MARK: - Profile Header Section
+private struct ProfileHeaderSection: View {
+    let model: AuthenticationViewModel
     @State private var showingImagePicker = false
     @State private var selectedImage: UIImage?
     @State private var isUpdatingProfilePic = false
-    @State private var isEditingProfile = false
-    @State private var editedUsername = ""
-    @State private var showingAlert = false
-    @State private var alertMessage = ""
     
     var body: some View {
-        HStack(alignment: .top, spacing: 12) {
-            // Profile Image Button - Contained in its own ZStack for isolation
-            ZStack {
-                Color.clear // Prevents touch events from propagating
-                ProfileImageButton(
-                    profilePicUrl: model.currentUser?.profilePicUrl,
-                    isUpdatingProfilePic: $isUpdatingProfilePic,
-                    showingImagePicker: $showingImagePicker
-                )
-            }
-            .frame(width: 80, height: 80)
+        HStack(alignment: .center, spacing: 15) {
+            // Profile Image
+            ProfileImageButton(
+                profilePicUrl: model.currentUser?.profilePicUrl,
+                isUpdatingProfilePic: $isUpdatingProfilePic,
+                showingImagePicker: $showingImagePicker
+            )
+            .frame(width: 100, height: 100)
             
-            // User Info - Now in its own container with clear background
-            VStack(alignment: .leading) {
-                UserInfoView(
-                    model: model,
-                    isEditingProfile: $isEditingProfile,
-                    editedUsername: $editedUsername,
-                    showingAlert: $showingAlert,
-                    alertMessage: $alertMessage
-                )
+            VStack(alignment: .leading, spacing: 4) {
+                Text(model.currentUser?.username ?? "Username")
+                    .font(.title2)
+                    .fontWeight(.bold)
+                
+                Text(model.currentUser?.email ?? "")
+                    .font(.subheadline)
+                    .foregroundColor(.secondary)
             }
-            .padding(.leading, 4)
-            .background(Color.clear)
             
             Spacer()
         }
-        .padding(.vertical)
         .sheet(isPresented: $showingImagePicker) {
             ImagePicker(image: $selectedImage)
         }
         .onChange(of: selectedImage) { oldValue, newValue in
             guard let image = newValue else { return }
             uploadProfilePicture(image)
-        }
-        .alert("Error", isPresented: $showingAlert) {
-            Button("OK", role: .cancel) {}
-        } message: {
-            Text(alertMessage)
         }
     }
     
@@ -116,12 +109,101 @@ struct ProfileHeaderView: View {
                 print("✅ Profile picture updated successfully")
             } catch {
                 print("❌ Failed to update profile picture: \(error)")
-                alertMessage = "Failed to update profile picture: \(error.localizedDescription)"
-                showingAlert = true
             }
             selectedImage = nil
             isUpdatingProfilePic = false
         }
+    }
+}
+
+// MARK: - Stats Section
+private struct StatsSection: View {
+    let videosCount: Int
+    
+    var body: some View {
+        HStack(spacing: 30) {
+            StatItem(count: "\(videosCount)", title: "Posts")
+            StatItem(count: "0", title: "Followers")
+            StatItem(count: "0", title: "Following")
+        }
+    }
+}
+
+private struct StatItem: View {
+    let count: String
+    let title: String
+    
+    var body: some View {
+        VStack(spacing: 4) {
+            Text(count)
+                .font(.headline)
+                .fontWeight(.bold)
+            Text(title)
+                .font(.subheadline)
+                .foregroundColor(.secondary)
+        }
+    }
+}
+
+// MARK: - Videos Grid Section
+private struct VideosGridSection: View {
+    let videos: [Video]
+    @StateObject private var videoManager = VideoPlayerManager()
+    @ObservedObject var videoModel: VideoViewModel
+    
+    private let columns = [
+        GridItem(.flexible()),
+        GridItem(.flexible()),
+        GridItem(.flexible())
+    ]
+    
+    var body: some View {
+        LazyVGrid(columns: columns, spacing: 2) {
+            ForEach(0..<videos.count, id: \.self) { index in
+                NavigationLink(destination: VideoPlayerView(video: videos[index], index: index, videoManager: videoManager, isVisible: true)) {
+                    VideoThumbnail(video: videos[index])
+                }
+            }
+        }
+    }
+}
+
+// MARK: - Video Thumbnail
+private struct VideoThumbnail: View {
+    let video: Video
+    
+    var body: some View {
+        Group {
+            if let thumbnailUrl = video.thumbnailUrl,
+               let url = URL(string: thumbnailUrl) {
+                AsyncImage(url: url) { phase in
+                    switch phase {
+                    case .empty:
+                        ProgressView()
+                    case .success(let image):
+                        image
+                            .resizable()
+                            .aspectRatio(1, contentMode: .fill)
+                    case .failure(_):
+                        Color.gray
+                            .overlay(
+                                Image(systemName: "video.slash")
+                                    .foregroundColor(.white)
+                            )
+                    @unknown default:
+                        Color.gray
+                    }
+                }
+            } else {
+                Color.gray
+                    .overlay(
+                        Image(systemName: "video")
+                            .foregroundColor(.white)
+                    )
+            }
+        }
+        .aspectRatio(1, contentMode: .fill)
+        .clipped()
     }
 }
 
@@ -189,147 +271,5 @@ struct ProfileImageButton: View {
         }
         .buttonStyle(PlainButtonStyle()) // Prevents button styling from affecting touch area
         .contentShape(Circle()) // Explicitly set the touch area to the circle
-    }
-}
-
-// MARK: - User Info View
-struct UserInfoView: View {
-    @ObservedObject var model: AuthenticationViewModel
-    @Binding var isEditingProfile: Bool
-    @Binding var editedUsername: String
-    @Binding var showingAlert: Bool
-    @Binding var alertMessage: String
-    @State private var isUpdating = false
-    
-    var body: some View {
-        VStack(alignment: .leading, spacing: 4) {
-            if isEditingProfile {
-                HStack {
-                    TextField("Username", text: $editedUsername)
-                        .font(.headline)
-                        .textContentType(.username)
-                        .submitLabel(.done)
-                        .disabled(isUpdating)
-                    
-                    if isUpdating {
-                        ProgressView()
-                            .padding(.horizontal, 8)
-                    } else {
-                        Button(action: updateUsername) {
-                            Image(systemName: "checkmark.circle.fill")
-                                .foregroundColor(.green)
-                        }
-                        
-                        Button(action: { isEditingProfile = false }) {
-                            Image(systemName: "xmark.circle.fill")
-                                .foregroundColor(.red)
-                        }
-                    }
-                }
-            } else {
-                HStack {
-                    Text(model.currentUser?.username ?? "Username")
-                        .font(.headline)
-                    Button(action: {
-                        editedUsername = model.currentUser?.username ?? ""
-                        isEditingProfile = true
-                    }) {
-                        Image(systemName: "pencil.circle")
-                            .foregroundColor(.blue)
-                    }
-                }
-            }
-            Text(model.currentUser?.email ?? "Email")
-                .font(.subheadline)
-                .foregroundColor(.gray)
-        }
-    }
-    
-    private func updateUsername() {
-        guard !editedUsername.isEmpty else {
-            alertMessage = "Username cannot be empty"
-            showingAlert = true
-            return
-        }
-        
-        isUpdating = true
-        
-        Task {
-            do {
-                try await model.updateUsername(editedUsername)
-                isEditingProfile = false
-            } catch {
-                alertMessage = error.localizedDescription
-                showingAlert = true
-            }
-            isUpdating = false
-        }
-    }
-}
-
-struct AlgorithmRuleView: View {
-    var body: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            // Header
-            Text("Content Rules")
-                .font(.headline)
-                .foregroundColor(.gray)
-            
-            // Example preset rules
-            VStack(spacing: 12) {
-                RuleCard(
-                    title: "AI Learning",
-                    description: "Show me AI tools, ML Core tutorials, and productivity hacks",
-                    isActive: true
-                )
-                
-                RuleCard(
-                    title: "Workout Time",
-                    description: "Focus on HIIT workouts and strength training demos",
-                    isActive: false
-                )
-                
-                // Add Rule Button
-                Button(action: { /* Placeholder */ }) {
-                    HStack {
-                        Image(systemName: "plus.circle.fill")
-                        Text("Add New Rule")
-                    }
-                    .foregroundColor(.blue)
-                    .padding()
-                    .frame(maxWidth: .infinity)
-                    .background(Color.blue.opacity(0.1))
-                    .cornerRadius(12)
-                }
-            }
-        }
-        .padding()
-    }
-}
-
-// Individual rule card
-struct RuleCard: View {
-    let title: String
-    let description: String
-    let isActive: Bool
-    
-    var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            HStack {
-                Text(title)
-                    .font(.headline)
-                Spacer()
-                Circle()
-                    .fill(isActive ? Color.green : Color.gray)
-                    .frame(width: 10, height: 10)
-            }
-            
-            Text(description)
-                .font(.subheadline)
-                .foregroundColor(.gray)
-        }
-        .padding()
-        .background(Color.secondary.opacity(0.1))
-        .cornerRadius(12)
     }
 }

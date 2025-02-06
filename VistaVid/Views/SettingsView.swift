@@ -1,7 +1,7 @@
 import SwiftUI
 
 struct SettingsView: View {
-    @ObservedObject var model: AuthenticationViewModel
+    let model: AuthenticationViewModel
     @Environment(\.dismiss) private var dismiss
     @State private var showingAlert = false
     @State private var alertMessage = ""
@@ -21,14 +21,23 @@ struct SettingsView: View {
                 BusinessAccountToggle(model: model, showingAlert: $showingAlert, alertMessage: $alertMessage)
             }
             
+            // Content Rules Section
+            Section {
+                ContentRulesView(model: model)
+            } header: {
+                Text("Content Rules")
+            } footer: {
+                Text("Create custom rules to personalize your feed")
+            }
+            
             // Privacy & Safety
             Section("Privacy & Safety") {
-                NavigationLink(destination: ContentRulesView(model: model)) {
-                    Label("Content Rules", systemImage: "eye")
-                }
-                
                 NavigationLink(destination: Text("Privacy Settings")) {
                     Label("Privacy", systemImage: "lock")
+                }
+                
+                NavigationLink(destination: Text("Safety Settings")) {
+                    Label("Safety", systemImage: "shield")
                 }
             }
             
@@ -40,6 +49,10 @@ struct SettingsView: View {
                 
                 Link(destination: URL(string: "https://vistavid.app/terms")!) {
                     Label("Terms of Service", systemImage: "doc.text")
+                }
+                
+                Link(destination: URL(string: "https://vistavid.app/privacy")!) {
+                    Label("Privacy Policy", systemImage: "hand.raised")
                 }
             }
             

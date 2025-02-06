@@ -276,7 +276,7 @@ final class VideoViewModel: ObservableObject {
             let snapshot = try await query.getDocuments()
             debugLog("📄 Got \(snapshot.documents.count) more filtered videos")
             
-            let newVideos = snapshot.documents.compactMap { document in
+            let newVideos = snapshot.documents.compactMap { document -> Video? in
                 Video.fromFirestore(document.data(), id: document.documentID)
             }
             
@@ -446,6 +446,57 @@ final class VideoViewModel: ObservableObject {
         debugLog("📤 Sharing video: \(video.id)")
         // Don't increment share count in Firestore
         // This should be handled by the UI layer for sharing functionality
+    }
+    
+    // MARK: - User Videos
+    
+    func fetchUserVideos(userId: String) async throws -> [Video] {
+        debugLog("🎬 Fetching videos for user: \(userId)")
+        
+        do {
+            // First try to get videos without ordering
+            let query = db.collection("videos")
+                .whereField("userId", isEqualTo: userId)
+            
+            let snapshot = try await query.getDocuments()
+            debugLog("📄 Got \(snapshot.documents.count) videos for user")
+            
+            if snapshot.documents.isEmpty {
+                debugLog("⚠️ No videos found for user")
+                return []
+            }
+            
+            var userVideos = snapshot.documents.compactMap { document -> Video? in
+                debugLog("📝 Processing video document: \(document.documentID)")
+                guard let video = Video.fromFirestore(document.data(), id: document.documentID) else {
+                    debugLog("❌ Failed to parse video document: \(document.documentID)")
+                    return nil
+                }
+                debugLog("✅ Successfully parsed video: \(document.documentID)")
+                return video
+            }
+            
+            // Sort in memory instead of using Firestore ordering
+            userVideos.sort { $0.createdAt > $1.createdAt }
+            debugLog("📊 Sorted \(userVideos.count) videos by creation date")
+            
+            return userVideos
+            
+        } catch let error as NSError {
+            debugLog("❌ Error fetching user videos: \(error.localizedDescription)")
+            if error.domain == "FIRFirestoreErrorDomain" && error.code == 9 {
+                debugLog("⚠️ Missing index error - attempting to fetch without ordering")
+                // If index error, try without ordering
+                let query = db.collection("videos")
+                    .whereField("userId", isEqualTo: userId)
+                
+                let snapshot = try await query.getDocuments()
+                var videos = snapshot.documents.compactMap { Video.fromFirestore($0.data(), id: $0.documentID) }
+                videos.sort { $0.createdAt > $1.createdAt }
+                return videos
+            }
+            throw error
+        }
     }
     
     // MARK: - Helper Methods
