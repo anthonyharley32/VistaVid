@@ -25,8 +25,8 @@ struct VistaVidApp: App {
         print("✅ Firebase configured successfully!")
         print("📱 App name: \(Bundle.main.object(forInfoDictionaryKey: "CFBundleName") as? String ?? "Unknown")")
         
-        // Initialize Firestore
-        _ = Firestore.firestore()
+        // Initialize Firestore via singleton
+        _ = FirestoreService.shared
         print("📚 Firestore instance created")
         
         // Debug current user state

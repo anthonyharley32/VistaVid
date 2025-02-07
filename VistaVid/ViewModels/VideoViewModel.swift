@@ -11,15 +11,20 @@ final class VideoViewModel: ObservableObject {
     @Published private(set) var isLoading = false
     @Published private(set) var error: Error?
     
-    private let db = Firestore.firestore()
+    private let db: Firestore
+    private let storage = Storage.storage()
     private var lastDocument: DocumentSnapshot?
     private let batchSize = 10
     
     // MARK: - Debug Properties
     private let debug = true
     
-    private let storage = Storage.storage().reference()
     private let auth = Auth.auth()
+    
+    // MARK: - Initializer
+    init() {
+        self.db = FirestoreService.shared.db
+    }
     
     // MARK: - Video Feed Methods
     
@@ -111,7 +116,7 @@ final class VideoViewModel: ObservableObject {
             debugLog("🆔 Generated video ID: \(videoId)")
             
             // Create storage reference
-            let videoRef = storage.child("videos/\(videoId).mp4")
+            let videoRef = storage.reference().child("videos/\(videoId).mp4")
             debugLog("📁 Storage path: \(videoRef.fullPath)")
             
             // Get video metadata
@@ -155,25 +160,18 @@ final class VideoViewModel: ObservableObject {
             debugLog("🔗 Video download URL: \(videoDownloadURL.absoluteString)")
             
             // Update status to uploaded
-            try await db.collection("videos").document(videoId).updateData([
-                "status": "uploaded"
-            ])
+            debugLog("📝 Updating video status")
+            try await db.collection("videos").document(videoId).updateData(VideoStatus.uploaded.asDictionary)
             debugLog("✅ Updated video status to uploaded")
             
             // Generate and upload thumbnail
             debugLog("🖼️ Generating thumbnail")
             if let thumbnail = try await generateThumbnail(for: videoURL),
                let thumbnailData = thumbnail.jpegData(compressionQuality: 0.7) {
-                let thumbnailRef = storage.child("thumbnails/\(videoId).jpg")
-                let thumbnailMetadata = StorageMetadata()
-                thumbnailMetadata.contentType = "image/jpeg"
-                thumbnailMetadata.customMetadata = [
-                    "userId": currentUser.uid,
-                    "videoId": videoId
-                ]
-                
+                let thumbnailRef = storage.reference().child("thumbnails/\(videoId).jpg")
+                let metadata = MediaMetadata(userId: currentUser.uid, videoId: videoId)
                 debugLog("📤 Uploading thumbnail")
-                try await thumbnailRef.putDataAsync(thumbnailData, metadata: thumbnailMetadata)
+                _ = try await thumbnailRef.putDataAsync(thumbnailData, metadata: metadata.asMetadata)
                 let thumbnailUrl = try await thumbnailRef.downloadURL().absoluteString
                 debugLog("✅ Thumbnail uploaded successfully")
                 
@@ -526,6 +524,26 @@ final class VideoViewModel: ObservableObject {
                 return videos
             }
             throw error
+        }
+    }
+    
+    // MARK: - Video Status
+    private enum VideoStatus: String, Sendable {
+        case uploaded = "uploaded"
+        
+        var asDictionary: [String: String] { ["status": rawValue] }
+    }
+    
+    // MARK: - Metadata Types
+    private struct MediaMetadata: Sendable {
+        let userId: String
+        let videoId: String
+        
+        var asMetadata: StorageMetadata {
+            let metadata = StorageMetadata()
+            metadata.contentType = "image/jpeg"
+            metadata.customMetadata = ["userId": userId, "videoId": videoId]
+            return metadata
         }
     }
     

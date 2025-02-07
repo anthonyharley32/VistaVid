@@ -8,11 +8,15 @@ import FirebaseAuth
     private(set) var isLoading = false
     private(set) var error: Error?
     
-    private let db = Firestore.firestore()
-    private let auth = Auth.auth()
+    private let db: Firestore
     
     // MARK: - Debug Properties
     private let debug = true
+    
+    // MARK: - Initializer
+    init() {
+        self.db = FirestoreService.shared.db
+    }
     
     // MARK: - Community Methods
     
@@ -20,7 +24,7 @@ import FirebaseAuth
     func createCommunity(name: String, description: String) async throws {
         debugLog("🌟 Creating new community: \(name)")
         
-        guard let currentUser = auth.currentUser else {
+        guard let currentUser = Auth.auth().currentUser else {
             debugLog("❌ No authenticated user found")
             throw NSError(domain: "Community", code: 401, userInfo: [NSLocalizedDescriptionKey: "User not authenticated"])
         }
@@ -75,7 +79,7 @@ import FirebaseAuth
     func joinCommunity(_ communityId: String) async throws {
         debugLog("👋 Joining community: \(communityId)")
         
-        guard let currentUser = auth.currentUser else {
+        guard let currentUser = Auth.auth().currentUser else {
             debugLog("❌ No authenticated user found")
             throw NSError(domain: "Community", code: 401, userInfo: [NSLocalizedDescriptionKey: "User not authenticated"])
         }
@@ -99,7 +103,7 @@ import FirebaseAuth
     func leaveCommunity(_ communityId: String) async throws {
         debugLog("👋 Leaving community: \(communityId)")
         
-        guard let currentUser = auth.currentUser else {
+        guard let currentUser = Auth.auth().currentUser else {
             debugLog("❌ No authenticated user found")
             throw NSError(domain: "Community", code: 401, userInfo: [NSLocalizedDescriptionKey: "User not authenticated"])
         }
@@ -121,7 +125,7 @@ import FirebaseAuth
     
     /// Checks if the current user is a member of a community
     func isMember(of communityId: String) -> Bool {
-        guard let currentUser = auth.currentUser,
+        guard let currentUser = Auth.auth().currentUser,
               let community = communities.first(where: { $0.id == communityId }) else {
             return false
         }
@@ -131,7 +135,7 @@ import FirebaseAuth
     
     /// Checks if the current user is a moderator of a community
     func isModerator(of communityId: String) -> Bool {
-        guard let currentUser = auth.currentUser,
+        guard let currentUser = Auth.auth().currentUser,
               let community = communities.first(where: { $0.id == communityId }) else {
             return false
         }

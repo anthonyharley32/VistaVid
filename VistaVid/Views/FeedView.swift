@@ -14,7 +14,8 @@ private struct FeedContentView: View {
     var body: some View {
         ScrollView(.vertical, showsIndicators: false) {
             LazyVStack(spacing: 0) {
-                ForEach(Array(videos.enumerated()), id: \.element.id) { index, video in
+                ForEach(Array(videos.enumerated()), id: \.element.id) { (index: Int, video: Video) in
+
                     VideoPlayerView(video: video, 
                                   index: index, 
                                   videoManager: videoManager,
@@ -390,10 +391,10 @@ struct VideoPlayerView: View {
     
     private func initializePlayerIfNeeded() async {
         print(" [VideoPlayerView \(index)]: START Initializing player")
-        guard player == nil, 
-              let videoURL = video.url else { 
-            print(" [VideoPlayerView \(index)]: Invalid video URL")
-            return 
+        guard player == nil,
+              let videoURL = video.url else { // Use the computed url property from Video model
+            print(" [VideoPlayerView \(index)]: Player already exists or invalid URL")
+            return
         }
         
         // Load thumbnails concurrently
@@ -428,7 +429,13 @@ struct VideoPlayerView: View {
         // Wait for asset to load if not preloaded
         if videoManager.getPreloadedAsset(for: index) == nil {
             print(" [VideoPlayerView \(index)]: Loading asset (not preloaded)")
-            _ = try? await asset.load(.isPlayable)
+            do {
+                let _ = try await asset.load(.isPlayable)
+                let _ = try await asset.load(.duration)
+                let _ = try await asset.load(.tracks)
+            } catch {
+                print(" [VideoPlayerView \(index)]: Failed to load asset properties: \(error)")
+            }
         } else {
             print(" [VideoPlayerView \(index)]: Using preloaded asset")
         }
@@ -554,7 +561,7 @@ final class VideoPlayerManager: ObservableObject {
     private var currentIndex: Int?
     private var timeObserverTokens: [Int: Any] = [:]
     private let preloadWindow = 2
-    @Environment(\.videoViewModel) private var videoViewModel: VideoViewModel
+    @Environment(\.videoViewModel) private var videoViewModel
     
     func register(player: AVQueuePlayer, for index: Int) {
         print(" [VideoPlayerManager]: START Registering player for index: \(index)")
@@ -614,8 +621,10 @@ final class VideoPlayerManager: ObservableObject {
             print(" [VideoPlayerManager]: Removed preloaded asset for index \(oldIndex)")
         }
         
-        // Preload assets within the window
-        for i in startIndex...endIndex {
+        // Preload assets within the window, prioritizing the next video
+        let preloadOrder = prioritizedPreloadOrder(currentIndex: index, start: startIndex, end: endIndex)
+        
+        for i in preloadOrder {
             // Skip if already preloaded
             guard preloadedAssets[i] == nil else {
                 print(" [VideoPlayerManager]: Asset already preloaded for index \(i)")
@@ -630,8 +639,22 @@ final class VideoPlayerManager: ObservableObject {
             
             print(" [VideoPlayerManager]: Preloading asset for index \(i)")
             let asset = AVURLAsset(url: videoURL)
+            
+            // Set resource loading priority
+            asset.resourceLoader.preloadsEligibleContentKeys = true
+            
             do {
-                _ = try await asset.load(.isPlayable)
+                // Load properties using modern API
+                let _ = try await asset.load(.isPlayable)
+                let _ = try await asset.load(.duration)
+                let _ = try await asset.load(.tracks)
+                
+                // Create player item for next video to prepare it
+                if i == index + 1 {
+                    let playerItem = AVPlayerItem(asset: asset)
+                    playerItem.preferredForwardBufferDuration = 2.0
+                }
+                
                 preloadedAssets[i] = asset
                 print(" [VideoPlayerManager]: Successfully preloaded asset for index \(i)")
             } catch {
@@ -640,6 +663,29 @@ final class VideoPlayerManager: ObservableObject {
         }
         
         print(" [VideoPlayerManager]: END Preloading adjacent videos")
+    }
+    
+    private func prioritizedPreloadOrder(currentIndex: Int, start: Int, end: Int) -> [Int] {
+        var order: [Int] = []
+        
+        // First priority: next video
+        if currentIndex + 1 <= end {
+            order.append(currentIndex + 1)
+        }
+        
+        // Second priority: previous video
+        if currentIndex - 1 >= start {
+            order.append(currentIndex - 1)
+        }
+        
+        // Third priority: remaining videos in window
+        for i in start...end {
+            if !order.contains(i) && i != currentIndex {
+                order.append(i)
+            }
+        }
+        
+        return order
     }
     
     func unregister(index: Int) {

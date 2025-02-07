@@ -4,7 +4,8 @@ import FirebaseAuth
 
 @Observable final class MessageViewModel {
     // MARK: - Properties
-    private let db = Firestore.firestore()
+    private let db: Firestore
+    
     private var messagesListener: ListenerRegistration?
     private var threadsListener: ListenerRegistration?
     
@@ -15,6 +16,7 @@ import FirebaseAuth
     
     // MARK: - Initialization
     init() {
+        self.db = FirestoreService.shared.db
         print("📱 MessageViewModel initialized")
         startObservingChatThreads()
     }

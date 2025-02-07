@@ -4,6 +4,7 @@ struct MainView: View {
     @ObservedObject var authModel: AuthenticationViewModel
     @State private var selectedTab = 0
     @State private var showingCamera = false
+    private let communitiesModel = CommunitiesViewModel()
     
     init(authModel: AuthenticationViewModel) {
         self.authModel = authModel
@@ -20,8 +21,8 @@ struct MainView: View {
                     }
                     .tag(0)
                 
-                // Communities Tab (Empty for now)
-                Color.clear
+                // Communities Tab
+                CommunitiesView(model: communitiesModel)
                     .tabItem {
                         Label("Communities", systemImage: "person.3.fill")
                     }
@@ -69,5 +70,6 @@ struct MainView: View {
         .fullScreenCover(isPresented: $showingCamera) {
             RecordingView()
         }
+        .ignoresSafeArea(.keyboard) // Prevent keyboard from pushing content up
     }
 }

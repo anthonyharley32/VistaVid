@@ -3,7 +3,7 @@ import FirebaseAuth
 
 // MARK: - Properties
 struct SignInView: View {
-    @ObservedObject var model: AuthenticationViewModel
+    let model: AuthenticationViewModel
     
     @State private var email = ""
     @State private var password = ""
@@ -16,7 +16,7 @@ struct SignInView: View {
         NavigationStack {
             VStack(spacing: 20) {
                 // Network Status Banner
-                if model.isOffline {
+                if !model.isOffline {
                     HStack {
                         Image(systemName: "wifi.slash")
                         Text("You're offline")
@@ -116,7 +116,7 @@ struct SignInView: View {
     // MARK: - Actions
     private func signIn() {
         // Debug log
-        print("🔐 [SignIn]: Attempting to sign in with email: \(email)")
+        print(" [SignIn]: Attempting to sign in with email: \(email)")
         
         Task {
             do {
@@ -124,7 +124,7 @@ struct SignInView: View {
             } catch {
                 alertMessage = error.localizedDescription
                 showAlert = true
-                print("🔐 [SignIn]: Sign in failed with error: \(error.localizedDescription)")
+                print(" [SignIn]: Sign in failed with error: \(error.localizedDescription)")
             }
         }
     }

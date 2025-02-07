@@ -4,7 +4,7 @@ import FirebaseAuth
 
 @Observable final class FollowViewModel {
     // MARK: - Properties
-    private let db = Firestore.firestore()
+    private let db: Firestore
     private var followsListener: ListenerRegistration?
     private var followersListener: ListenerRegistration?
     
@@ -19,6 +19,7 @@ import FirebaseAuth
     
     // MARK: - Initialization
     init() {
+        self.db = FirestoreService.shared.db
         print("📱 FollowViewModel initialized")
     }
     
