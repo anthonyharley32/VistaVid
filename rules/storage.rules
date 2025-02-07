@@ -27,5 +27,12 @@ service firebase.storage {
     match /hls/{videoId}/{allPaths=**} {
       allow write: if false; // Only Cloud Functions can write HLS files
     }
+
+    match /community_logos/{imageId} {
+      allow read: if true;  // Anyone can read community logos
+      allow write: if request.auth != null &&  // Must be authenticated to upload
+                     request.resource.size < 5 * 1024 * 1024 && // Max 5MB
+                     request.resource.contentType.matches('image/.*'); // Must be an image
+    }
   }
 }

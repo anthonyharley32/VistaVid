@@ -732,6 +732,8 @@ final class VideoPlayerManager: ObservableObject {
     }
     
     func cleanup() {
+        print(" [VideoPlayerManager]: START Global cleanup")
+        
         // Remove all time observers and cleanup players
         for (index, player) in players {
             if let token = timeObserverTokens[index] {
@@ -742,10 +744,13 @@ final class VideoPlayerManager: ObservableObject {
             player.removeAllItems()
         }
         
-        players.removeAll()
+        // Clear all collections
         timeObserverTokens.removeAll()
+        players.removeAll()
         preloadedAssets.removeAll()
         currentIndex = nil
+        
+        print(" [VideoPlayerManager]: END Global cleanup")
     }
 }
 

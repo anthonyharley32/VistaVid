@@ -2,7 +2,7 @@ import Foundation
 import FirebaseFirestore
 import FirebaseAuth
 
-@Observable final class CommunityViewModel {
+@Observable final class CommunityViewModel: ObservableObject {
     // MARK: - Properties
     private(set) var communities: [Community] = []
     private(set) var isLoading = false
@@ -21,8 +21,16 @@ import FirebaseAuth
     // MARK: - Community Methods
     
     /// Creates a new community
-    func createCommunity(name: String, description: String) async throws {
+    func createCommunity(
+        name: String,
+        description: String,
+        iconType: String = "emoji",
+        iconEmoji: String? = "👥",
+        iconImageUrl: String? = nil,
+        backgroundColor: String = "#007AFF"
+    ) async throws {
         debugLog("🌟 Creating new community: \(name)")
+        debugLog("🔐 Current user ID: \(Auth.auth().currentUser?.uid ?? "no user")")
         
         guard let currentUser = Auth.auth().currentUser else {
             debugLog("❌ No authenticated user found")
@@ -36,18 +44,30 @@ import FirebaseAuth
             let community = Community(
                 name: name,
                 description: description,
+                iconType: iconType,
+                iconEmoji: iconEmoji,
+                iconImageUrl: iconImageUrl,
+                backgroundColor: backgroundColor,
+                creatorId: currentUser.uid,
+                membersCount: 1,
                 members: [currentUser.uid],
                 moderators: [currentUser.uid]
             )
             
-            try await db.collection("communities").document(community.id)
-                .setData(community.toDictionary())
+            debugLog("📝 Created community object with ID: \(community.id)")
+            let data = community.toDictionary()
+            debugLog("📦 Community data to save: \(data)")
             
-            debugLog("✅ Community created successfully")
+            try await db.collection("communities").document(community.id)
+                .setData(data)
+            
+            debugLog("✅ Community created successfully in Firestore")
+            debugLog("🔄 Fetching updated communities list")
             await fetchCommunities()
             
         } catch {
             debugLog("❌ Error creating community: \(error.localizedDescription)")
+            debugLog("🔍 Detailed error: \(error)")
             throw error
         }
     }
@@ -55,6 +75,7 @@ import FirebaseAuth
     /// Fetches all communities
     func fetchCommunities() async {
         debugLog("📚 Fetching communities")
+        debugLog("🔐 Current user ID: \(Auth.auth().currentUser?.uid ?? "no user")")
         isLoading = true
         defer { isLoading = false }
         
@@ -63,14 +84,20 @@ import FirebaseAuth
                 .order(by: "createdAt", descending: true)
                 .getDocuments()
             
+            debugLog("📥 Got \(snapshot.documents.count) documents from Firestore")
+            
             communities = snapshot.documents.compactMap { document in
-                Community.fromFirestore(document.data(), id: document.documentID)
+                debugLog("🔄 Processing document ID: \(document.documentID)")
+                debugLog("📄 Document data: \(document.data())")
+                return Community.fromFirestore(document.data(), id: document.documentID)
             }
             
-            debugLog("✅ Fetched \(communities.count) communities")
+            debugLog("✅ Successfully parsed \(communities.count) communities")
+            debugLog("📋 Community IDs: \(communities.map { $0.id })")
             
         } catch {
             debugLog("❌ Error fetching communities: \(error.localizedDescription)")
+            debugLog("🔍 Detailed error: \(error)")
             self.error = error
         }
     }

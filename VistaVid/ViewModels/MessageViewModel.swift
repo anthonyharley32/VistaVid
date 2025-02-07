@@ -41,10 +41,45 @@ import FirebaseAuth
                 
                 guard let documents = snapshot?.documents else { return }
                 
-                self?.chatThreads = documents.compactMap { document in
-                    ChatThread.fromFirestore(document.data(), id: document.documentID)
+                // Capture database reference locally
+                let db = self?.db
+                
+                Task {
+                    var threads: [ChatThread] = []
+                    
+                    for document in documents {
+                        guard var thread = ChatThread.fromFirestore(document.data(), id: document.documentID) else {
+                            continue
+                        }
+                        
+                        // Fetch user data for participants
+                        var participants: [User] = []
+                        for userId in thread.participantIds {
+                            do {
+                                let userDoc = try await db?.collection("users")
+                                    .document(userId)
+                                    .getDocument()
+                                
+                                if let userData = userDoc?.data(),
+                                   let user = User.fromFirestore(userData, id: userId) {
+                                    participants.append(user)
+                                }
+                            } catch {
+                                print("❌ Error fetching user data: \(error.localizedDescription)")
+                            }
+                        }
+                        
+                        thread.participants = participants
+                        threads.append(thread)
+                    }
+                    
+                    let threadsToUpdate = threads
+                    let viewModel = self
+                    await MainActor.run {
+                        viewModel?.chatThreads = threadsToUpdate
+                        print("✅ Successfully loaded \(threadsToUpdate.count) chat threads with user data")
+                    }
                 }
-                print("✅ Successfully loaded \(self?.chatThreads.count ?? 0) chat threads")
             }
     }
     

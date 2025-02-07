@@ -2,51 +2,92 @@ import SwiftUI
 import FirebaseAuth
 
 struct ChatView: View {
+    // MARK: - Properties
     let recipient: User
     @State private var messageText = ""
     @State private var messageModel = MessageViewModel()
     @State private var isLoading = false
     @Environment(\.dismiss) private var dismiss
+    @State private var threadId: String?
     
+    // MARK: - Body
     var body: some View {
         VStack {
             ScrollView {
                 LazyVStack(spacing: 12) {
-                    ForEach(messageModel.messages) { message in
-                        MessageBubble(message: message, isFromCurrentUser: message.senderId == Auth.auth().currentUser?.uid)
-                            .padding(.horizontal)
+                    ForEach(Array(messageModel.messages.enumerated()), id: \.element.id) { index, message in
+                        let thread = messageModel.chatThreads.first { thread in
+                            thread.participantIds.contains(message.senderId) &&
+                            thread.participantIds.contains(message.recipientId)
+                        }
+                        let user = thread?.participants?.first { $0.id == message.senderId }
+                        
+                        let isFirstInSequence = index == 0 || messageModel.messages[index - 1].senderId != message.senderId
+                        
+                        ChatMessageBubble(
+                            message: message,
+                            user: user,
+                            isFromCurrentUser: message.senderId == Auth.auth().currentUser?.uid,
+                            isFirstInSequence: isFirstInSequence
+                        )
                     }
                 }
                 .padding(.vertical)
             }
             
             // Message input
-            HStack {
-                TextField("Message...", text: $messageText)
-                    .textFieldStyle(.roundedBorder)
-                    .disabled(isLoading)
-                
-                Button(action: {
+            ChatInputField(
+                messageText: $messageText,
+                isLoading: isLoading,
+                onSend: {
                     Task {
                         isLoading = true
                         do {
-                            try await messageModel.sendMessage(messageText, to: recipient.id)
-                            messageText = ""
+                            try await messageModel.sendMessage(messageText, to: recipient.id, in: threadId)
+                            await MainActor.run {
+                                messageText = ""
+                            }
                         } catch {
                             print("❌ Error sending message: \(error.localizedDescription)")
                         }
                         isLoading = false
                     }
-                }) {
-                    Image(systemName: "paperplane.fill")
-                        .foregroundColor(.blue)
                 }
-                .disabled(messageText.isEmpty || isLoading)
-            }
-            .padding()
+            )
         }
         .navigationTitle("@\(recipient.username)")
         .navigationBarTitleDisplayMode(.inline)
+        .task {
+            // Find existing thread
+            if let currentUserId = Auth.auth().currentUser?.uid {
+                let snapshot = try? await FirestoreService.shared.db
+                    .collection("chatThreads")
+                    .whereField("participantIds", arrayContains: currentUserId)
+                    .getDocuments()
+                
+                if let existingThread = snapshot?.documents.first(where: { document in
+                    let data = document.data()
+                    let participants = data["participantIds"] as? [String] ?? []
+                    return participants.contains(recipient.id)
+                }) {
+                    threadId = existingThread.documentID
+                    messageModel.startObservingMessages(in: existingThread.documentID)
+                }
+            }
+        }
+    }
+}
+
+#Preview {
+    NavigationView {
+        ChatView(
+            recipient: User(
+                id: "preview",
+                username: "johndoe",
+                email: "john@example.com",
+                createdAt: Date()
+            )
+        )
     }
 }
 

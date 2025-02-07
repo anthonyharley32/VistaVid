@@ -2,23 +2,28 @@ import SwiftUI
 import FirebaseAuth
 
 struct InboxView: View {
+    // MARK: - Properties
     @State private var showNewMessageSheet = false
     @State private var messageModel = MessageViewModel()
     @State private var selectedUser: User?
     
+    // MARK: - Body
     var body: some View {
         NavigationStack {
             ScrollView {
                 LazyVStack(spacing: 0) {
                     ForEach(messageModel.chatThreads) { thread in
-                        // We'll implement this later when we have the user data
-                        Button(action: {
-                            // TODO: Fetch user and navigate
+                        NavigationLink(destination: {
+                            if let otherUser = thread.participants?.first(where: { $0.id != Auth.auth().currentUser?.uid }) {
+                                ChatView(recipient: otherUser)
+                            }
                         }) {
-                            Text("Chat with @\(thread.participantIds.first ?? "")")
-                                .frame(maxWidth: .infinity, alignment: .leading)
-                                .padding()
+                            ChatThreadRow(
+                                thread: thread,
+                                currentUserId: Auth.auth().currentUser?.uid ?? ""
+                            )
                         }
+                        .buttonStyle(.plain)
                         Divider()
                     }
                 }
@@ -36,10 +41,24 @@ struct InboxView: View {
                 }
             }
             .sheet(isPresented: $showNewMessageSheet) {
-                // New message sheet will go here
-                Text("New Message")
-                    .presentationDetents([.medium])
+                NavigationStack {
+                    CommunitiesView(model: CommunitiesViewModel())
+                        .navigationTitle("New Message")
+                        .navigationBarTitleDisplayMode(.inline)
+                        .toolbar {
+                            ToolbarItem(placement: .navigationBarLeading) {
+                                Button("Cancel") {
+                                    showNewMessageSheet = false
+                                }
+                            }
+                        }
+                }
+                .presentationDetents([.large])
             }
         }
     }
+}
+
+#Preview {
+    InboxView()
 }

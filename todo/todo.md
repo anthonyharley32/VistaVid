@@ -26,12 +26,12 @@
 
 4.  View a user's profile
 5.  Follow a user
+6.  Search for a user
 
 
-5.  Search for a user or video
-6.  DM a user
-7.  See liked posts
-8.  Make community and posts
+7.  DM a user
+8.  See liked posts
+9.  Make community and posts
 
 
 
