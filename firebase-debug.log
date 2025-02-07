@@ -1,0 +1,74 @@
+[debug] [2025-02-07T04:50:48.509Z] ----------------------------------------------------------------------
+[debug] [2025-02-07T04:50:48.516Z] Command:       /Users/gauntletAI/.nvm/versions/node/v23.6.0/bin/node /Users/gauntletAI/.nvm/versions/node/v23.6.0/bin/firebase init firestore
+[debug] [2025-02-07T04:50:48.516Z] CLI Version:   13.30.0
+[debug] [2025-02-07T04:50:48.517Z] Platform:      darwin
+[debug] [2025-02-07T04:50:48.517Z] Node Version:  v23.6.0
+[debug] [2025-02-07T04:50:48.517Z] Time:          Thu Feb 06 2025 22:50:48 GMT-0600 (Central Standard Time)
+[debug] [2025-02-07T04:50:48.517Z] ----------------------------------------------------------------------
+[debug] 
+[debug] [2025-02-07T04:50:48.622Z] > command requires scopes: ["email","openid","https://www.googleapis.com/auth/cloudplatformprojects.readonly","https://www.googleapis.com/auth/firebase","https://www.googleapis.com/auth/cloud-platform"]
+[debug] [2025-02-07T04:50:48.622Z] > authorizing via signed-in user (anthony.harley32@gmail.com)
+[info] 
+     ######## #### ########  ######## ########     ###     ######  ########
+     ##        ##  ##     ## ##       ##     ##  ##   ##  ##       ##
+     ######    ##  ########  ######   ########  #########  ######  ######
+     ##        ##  ##    ##  ##       ##     ## ##     ##       ## ##
+     ##       #### ##     ## ######## ########  ##     ##  ######  ########
+
+You're about to initialize a Firebase project in this directory:
+
+  /Users/gauntletAI/Desktop/Gauntlet/Week 5-6/VistaVid
+
+Before we get started, keep in mind:
+
+  * You are initializing within an existing Firebase project directory
+
+[info] 
+=== Project Setup
+[info] 
+[info] First, let's associate this project directory with a Firebase project.
+[info] You can create multiple project aliases by running firebase use --add, 
+[info] but for now we'll just set up a default project.
+[info] 
+[debug] [2025-02-07T04:50:48.624Z] Using project from CLI flag: vistavid-be
+[debug] [2025-02-07T04:50:48.624Z] Checked if tokens are valid: false, expires at: 1738885429076
+[debug] [2025-02-07T04:50:48.624Z] Checked if tokens are valid: false, expires at: 1738885429076
+[debug] [2025-02-07T04:50:48.624Z] > refreshing access token with scopes: []
+[debug] [2025-02-07T04:50:48.625Z] >>> [apiv2][query] POST https://www.googleapis.com/oauth2/v3/token [none]
+[debug] [2025-02-07T04:50:48.625Z] >>> [apiv2][body] POST https://www.googleapis.com/oauth2/v3/token [omitted]
+[debug] [2025-02-07T04:50:48.837Z] <<< [apiv2][status] POST https://www.googleapis.com/oauth2/v3/token 200
+[debug] [2025-02-07T04:50:48.837Z] <<< [apiv2][body] POST https://www.googleapis.com/oauth2/v3/token [omitted]
+[debug] [2025-02-07T04:50:48.860Z] >>> [apiv2][query] GET https://firebase.googleapis.com/v1beta1/projects/vistavid-be [none]
+[debug] [2025-02-07T04:50:49.081Z] <<< [apiv2][status] GET https://firebase.googleapis.com/v1beta1/projects/vistavid-be 200
+[debug] [2025-02-07T04:50:49.081Z] <<< [apiv2][body] GET https://firebase.googleapis.com/v1beta1/projects/vistavid-be {"projectId":"vistavid-be","projectNumber":"83546936939","displayName":"VistaVid-BE","name":"projects/vistavid-be","resources":{"hostingSite":"vistavid-be"},"state":"ACTIVE","etag":"1_5064b123-b1d0-4d54-b74b-1235b6c00495"}
+[info] i  Using project vistavid-be (VistaVid-BE) 
+[info] 
+=== Firestore Setup
+[debug] [2025-02-07T04:50:49.106Z] Checked if tokens are valid: true, expires at: 1738907447837
+[debug] [2025-02-07T04:50:49.106Z] Checked if tokens are valid: true, expires at: 1738907447837
+[debug] [2025-02-07T04:50:49.106Z] >>> [apiv2][query] GET https://serviceusage.googleapis.com/v1/projects/vistavid-be/services/firestore.googleapis.com [none]
+[debug] [2025-02-07T04:50:49.106Z] >>> [apiv2][(partial)header] GET https://serviceusage.googleapis.com/v1/projects/vistavid-be/services/firestore.googleapis.com x-goog-quota-user=projects/vistavid-be
+[debug] [2025-02-07T04:50:49.574Z] <<< [apiv2][status] GET https://serviceusage.googleapis.com/v1/projects/vistavid-be/services/firestore.googleapis.com 200
+[debug] [2025-02-07T04:50:49.574Z] <<< [apiv2][body] GET https://serviceusage.googleapis.com/v1/projects/vistavid-be/services/firestore.googleapis.com [omitted]
+[debug] [2025-02-07T04:50:49.574Z] Checked if tokens are valid: true, expires at: 1738907447837
+[debug] [2025-02-07T04:50:49.574Z] Checked if tokens are valid: true, expires at: 1738907447837
+[debug] [2025-02-07T04:50:49.575Z] >>> [apiv2][query] GET https://firestore.googleapis.com/v1/projects/vistavid-be/databases/(default) [none]
+[debug] [2025-02-07T04:50:49.781Z] <<< [apiv2][status] GET https://firestore.googleapis.com/v1/projects/vistavid-be/databases/(default) 200
+[debug] [2025-02-07T04:50:49.781Z] <<< [apiv2][body] GET https://firestore.googleapis.com/v1/projects/vistavid-be/databases/(default) {"name":"projects/vistavid-be/databases/(default)","uid":"d052ac0e-7b0a-4c36-941c-2d08cb970742","createTime":"2025-02-04T15:14:28.149047Z","updateTime":"2025-02-04T15:14:28.149047Z","locationId":"nam5","type":"FIRESTORE_NATIVE","concurrencyMode":"PESSIMISTIC","versionRetentionPeriod":"3600s","earliestVersionTime":"2025-02-07T03:50:49.883392Z","appEngineIntegrationMode":"DISABLED","keyPrefix":"s","pointInTimeRecoveryEnablement":"POINT_IN_TIME_RECOVERY_DISABLED","deleteProtectionState":"DELETE_PROTECTION_DISABLED","databaseEdition":"STANDARD","etag":"IIeoldLhsIsDMJyCntOnqosD"}
+[debug] [2025-02-07T04:50:49.781Z] database_type: FIRESTORE_NATIVE
+[debug] [2025-02-07T04:50:49.781Z] database_type: FIRESTORE_NATIVE
+[debug] [2025-02-07T04:50:49.782Z] > command requires scopes: ["email","openid","https://www.googleapis.com/auth/cloudplatformprojects.readonly","https://www.googleapis.com/auth/firebase","https://www.googleapis.com/auth/cloud-platform"]
+[debug] [2025-02-07T04:50:49.782Z] > authorizing via signed-in user (anthony.harley32@gmail.com)
+[debug] [2025-02-07T04:50:49.782Z] [iam] checking project vistavid-be for permissions ["firebase.projects.get"]
+[debug] [2025-02-07T04:50:49.782Z] Checked if tokens are valid: true, expires at: 1738907447837
+[debug] [2025-02-07T04:50:49.782Z] Checked if tokens are valid: true, expires at: 1738907447837
+[debug] [2025-02-07T04:50:49.782Z] >>> [apiv2][query] POST https://cloudresourcemanager.googleapis.com/v1/projects/vistavid-be:testIamPermissions [none]
+[debug] [2025-02-07T04:50:49.783Z] >>> [apiv2][(partial)header] POST https://cloudresourcemanager.googleapis.com/v1/projects/vistavid-be:testIamPermissions x-goog-quota-user=projects/vistavid-be
+[debug] [2025-02-07T04:50:49.783Z] >>> [apiv2][body] POST https://cloudresourcemanager.googleapis.com/v1/projects/vistavid-be:testIamPermissions {"permissions":["firebase.projects.get"]}
+[debug] [2025-02-07T04:50:49.927Z] <<< [apiv2][status] POST https://cloudresourcemanager.googleapis.com/v1/projects/vistavid-be:testIamPermissions 200
+[debug] [2025-02-07T04:50:49.927Z] <<< [apiv2][body] POST https://cloudresourcemanager.googleapis.com/v1/projects/vistavid-be:testIamPermissions {"permissions":["firebase.projects.get"]}
+[info] 
+[info] Firestore Security Rules allow you to define how and when to allow
+[info] requests. You can keep these rules in your project directory
+[info] and publish them with firebase deploy.
+[info] 

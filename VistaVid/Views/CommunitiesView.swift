@@ -6,6 +6,7 @@ import FirebaseFirestore
     var searchText = ""
     var users: [User] = []
     var isLoading = false
+    var error: Error?
     private let db = Firestore.firestore()
     
     // MARK: - Search Methods
@@ -17,22 +18,74 @@ import FirebaseFirestore
         }
         
         isLoading = true
-        debugLog("Searching for users with query: \(searchText)")
+        error = nil
+        debugLog("Starting search with query: \(searchText)")
         
         do {
-            let searchTextLower = searchText.lowercased()
-            let query = db.collection("users")
-                .whereField("username", isGreaterThanOrEqualTo: searchTextLower)
-                .whereField("username", isLessThan: searchTextLower + "z")
+            // Create search keywords
+            let searchTerms = searchText.lowercased().split(separator: " ")
+            debugLog("Search terms after processing: \(searchTerms)")
+            
+            // Build query
+            let usersRef = db.collection("users")
+            let baseQuery: Query
+            
+            // For debugging: First get all users to verify data
+            debugLog("Fetching all users for debug...")
+            let allUsers = try await usersRef.getDocuments()
+            debugLog("Total users in database: \(allUsers.documents.count)")
+            if let firstUser = allUsers.documents.first?.data() {
+                debugLog("Sample user data: \(firstUser)")
+            }
+            
+            // If search has multiple terms, use array contains for keywords
+            if searchTerms.count > 1 {
+                debugLog("Using multi-term search strategy")
+                baseQuery = usersRef.whereField("searchKeywords", arrayContainsAny: searchTerms.map(String.init))
+            } else {
+                // For single term, use efficient prefix search
+                let searchTerm = String(searchTerms[0]).lowercased() // Convert to lowercase to match stored format
+                let endTerm = searchTerm.appending("\u{f8ff}")
+                debugLog("Using single-term search strategy")
+                debugLog("Search range: from '\(searchTerm)' to '\(endTerm)'")
+                
+                baseQuery = usersRef
+                    .whereField("username", isGreaterThanOrEqualTo: searchTerm)
+                    .whereField("username", isLessThan: endTerm)
+            }
+            
+            // Add ordering and limit
+            let finalQuery = baseQuery
+                .order(by: "username")
                 .limit(to: 20)
             
-            let snapshot = try await query.getDocuments()
+            debugLog("Executing search query...")
+            let snapshot = try await finalQuery.getDocuments()
+            debugLog("Query returned \(snapshot.documents.count) documents")
+            
             users = snapshot.documents.compactMap { document in
-                try? document.data(as: User.self)
+                do {
+                    // Create a dictionary with the ID included
+                    var userData = document.data()
+                    userData["userId"] = document.documentID  // Add document ID as userId
+                    debugLog("Processing user document: \(document.documentID) with data: \(userData)")
+                    
+                    let user = try Firestore.Decoder().decode(User.self, from: userData)
+                    debugLog("Successfully decoded user: \(user.username)")
+                    return user
+                } catch {
+                    debugLog("Error decoding user document \(document.documentID): \(error)")
+                    debugLog("Detailed error: \(String(describing: error))")
+                    return nil
+                }
             }
-            debugLog("Found \(users.count) users")
+            
+            debugLog("Final processed users count: \(users.count)")
+            
         } catch {
-            debugLog("Error searching users: \(error.localizedDescription)")
+            debugLog("Search error: \(error.localizedDescription)")
+            debugLog("Detailed error: \(error)")
+            self.error = error
             users = []
         }
         
@@ -62,6 +115,10 @@ struct CommunitiesView: View {
                 ZStack {
                     if model.isLoading {
                         ProgressView()
+                    } else if let error = model.error {
+                        ContentUnavailableView("Error", 
+                            systemImage: "exclamationmark.triangle",
+                            description: Text(error.localizedDescription))
                     } else if model.users.isEmpty && !model.searchText.isEmpty {
                         ContentUnavailableView("No Users Found", 
                             systemImage: "person.slash",

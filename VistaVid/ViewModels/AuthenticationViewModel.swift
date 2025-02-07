@@ -51,15 +51,13 @@ final class AuthenticationViewModel: ObservableObject {
     
     // MARK: - Initialization
     init() {
-        setupFirestore()
         setupAuthStateListener()
         setupNetworkMonitor()
     }
     
     private func setupFirestore() {
-        let settings = FirestoreSettings()
-        settings.cacheSettings = MemoryCacheSettings(garbageCollectorSettings: MemoryLRUGCSettings())
-        db.settings = settings
+        // Remove Firestore configuration as it should only be done once at app startup
+        debugLog("🔥 Firestore already configured")
     }
     
     // MARK: - Network Monitoring

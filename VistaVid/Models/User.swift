@@ -28,6 +28,20 @@ class User: Identifiable, Codable, Hashable {
         case followingCount
     }
     
+    required init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        
+        id = try container.decode(String.self, forKey: .id)
+        username = try container.decode(String.self, forKey: .username)
+        email = try container.decode(String.self, forKey: .email)
+        createdAt = try container.decode(Date.self, forKey: .createdAt)
+        profilePicUrl = try container.decodeIfPresent(String.self, forKey: .profilePicUrl)
+        isBusiness = try container.decodeIfPresent(Bool.self, forKey: .isBusiness) ?? false
+        selectedAlgorithms = try container.decodeIfPresent([String].self, forKey: .selectedAlgorithms) ?? []
+        followersCount = try container.decodeIfPresent(Int.self, forKey: .followersCount) ?? 0
+        followingCount = try container.decodeIfPresent(Int.self, forKey: .followingCount) ?? 0
+    }
+    
     // MARK: - Initialization
     init(id: String, username: String, email: String, createdAt: Date, profilePicUrl: String? = nil, isBusiness: Bool = false, selectedAlgorithms: [String] = [], followersCount: Int = 0, followingCount: Int = 0) {
         self.id = id
