@@ -429,7 +429,12 @@ struct CreateCommunityView: View {
                 let imagePath = "community_logos/\(UUID().uuidString).jpg"
                 let imageRef = storageRef.child(imagePath)
                 
-                _ = try await imageRef.putDataAsync(imageData)
+                // Add metadata
+                let metadata = StorageMetadata()
+                metadata.contentType = "image/jpeg"
+                
+                // Upload with metadata
+                _ = try await imageRef.putDataAsync(imageData, metadata: metadata)
                 iconImageUrl = try await imageRef.downloadURL().absoluteString
             }
             
