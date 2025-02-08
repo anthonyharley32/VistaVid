@@ -13,6 +13,15 @@
 [ ] OmniHuman-1: Rethinking the Scaling-Up of One-Stage Conditioned Human Animation Models
 [ ] DeepSeek-R1: Incentivizing Reasoning Capability in LLMs via Reinforcement Learning
 [ ] Build an open source version of Sider. 
+[ ] Ollama temrinal chat
+[ ] Create a chat interface with Ollama and Gradio
+[ ] Tavily API ()
+[ ] Weights and biases
+[ ] Structured JSONB return usecase
+[ ]
+[ ]
+[ ]
+[ ]
 
 #Week 5
 [ ] 
@@ -26,13 +35,13 @@
 2.  View, like, comment on a video
 3.  Edit profile 
 4.  View a user's profile
-5.  Follow a user
 6.  Search for a user
 7.  DM a user
 9.  Make community 
 
 and posts
 8.  See liked posts
+5.  Follow a user
 
 
 

@@ -534,6 +534,7 @@ final class VideoViewModel: ObservableObject {
             // Get all likes for the user
             let likesSnapshot = try await db.collectionGroup("likes")
                 .whereField("userId", isEqualTo: userId)
+                .order(by: "createdAt", descending: true)  // Add ordering by createdAt
                 .getDocuments()
             
             debugLog("📄 Found \(likesSnapshot.documents.count) likes")
@@ -544,9 +545,15 @@ final class VideoViewModel: ObservableObject {
             }
             
             // Get video IDs from likes
-            let videoIds = likesSnapshot.documents.map { doc in
-                doc.reference.parent.parent!.documentID
+            let videoIds = likesSnapshot.documents.compactMap { doc -> String? in
+                // Get the video ID from the reference path
+                let pathComponents = doc.reference.path.components(separatedBy: "/")
+                // The path format is "videos/{videoId}/likes/{likeId}"
+                guard pathComponents.count >= 2 else { return nil }
+                return pathComponents[1] // This is the videoId
             }
+            
+            debugLog("🎯 Found video IDs: \(videoIds)")
             
             // Fetch videos in batches of 10
             var likedVideos: [Video] = []
@@ -555,16 +562,29 @@ final class VideoViewModel: ObservableObject {
                     .whereField(FieldPath.documentID(), in: chunk)
                     .getDocuments()
                 
-                let videos = videosSnapshot.documents.compactMap { doc -> Video? in
-                    Video.fromFirestore(doc.data(), id: doc.documentID)
+                // Process each video document and fetch user data
+                for doc in videosSnapshot.documents {
+                    debugLog("📝 Processing video document: \(doc.documentID)")
+                    guard var video = Video.fromFirestore(doc.data(), id: doc.documentID) else {
+                        debugLog("❌ Failed to parse video document: \(doc.documentID)")
+                        continue
+                    }
+                    // Fetch user data for the video
+                    video.user = await fetchUserForVideo(video)
+                    debugLog("✅ Successfully processed video: \(doc.documentID)")
+                    likedVideos.append(video)
                 }
-                likedVideos.append(contentsOf: videos)
             }
             
-            // Sort by most recently liked
-            likedVideos.sort { $0.createdAt > $1.createdAt }
-            debugLog("✅ Successfully fetched \(likedVideos.count) liked videos")
+            // Sort by the original like order (most recent first)
+            let orderedVideoIds = videoIds
+            likedVideos.sort { first, second in
+                let firstIndex = orderedVideoIds.firstIndex(of: first.id) ?? 0
+                let secondIndex = orderedVideoIds.firstIndex(of: second.id) ?? 0
+                return firstIndex < secondIndex
+            }
             
+            debugLog("✅ Successfully fetched \(likedVideos.count) liked videos")
             return likedVideos
             
         } catch {

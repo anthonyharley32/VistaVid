@@ -34,6 +34,11 @@ service cloud.firestore {
       }
     }
     
+    // Allow querying likes subcollection using collectionGroup
+    match /{path=**}/likes/{likeId} {
+      allow read: if true;  // Allow reading likes from any video
+    }
+    
     // Follow relationships
     match /follows/{followId} {
       allow read: if true;  // Anyone can see who follows whom

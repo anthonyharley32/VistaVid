@@ -122,13 +122,26 @@ struct ProfileView: View {
     
     private func loadContent() async {
         // Load user videos
+        print("🎥 Starting to fetch user videos for: \(user.id)")
         if let videos = try? await videoModel.fetchUserVideos(userId: user.id) {
+            print("📊 User videos data received: \(videos.count) videos")
             userVideos = videos
+            print("✅ Successfully updated userVideos state with \(userVideos.count) videos")
+        } else {
+            print("❌ Failed to fetch user videos")
         }
         
         // Load liked videos
-        if let liked = try? await videoModel.fetchLikedVideos(userId: user.id) {
+        print("❤️ Starting to fetch liked videos for user: \(user.id)")
+        do {
+            let liked = try await videoModel.fetchLikedVideos(userId: user.id)
+            print("📊 Liked videos data received: \(liked.count) videos")
+            print("🔍 First few liked video IDs: \(liked.prefix(3).map { $0.id }.joined(separator: ", "))")
             likedVideos = liked
+            print("✅ Successfully updated likedVideos state with \(likedVideos.count) videos")
+        } catch {
+            print("❌ Error fetching liked videos: \(error.localizedDescription)")
+            print("🔬 Detailed error: \(error)")
         }
     }
 }
