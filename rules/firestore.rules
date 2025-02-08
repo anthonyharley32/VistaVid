@@ -43,10 +43,7 @@ service cloud.firestore {
     match /follows/{followId} {
       allow read: if true;  // Anyone can see who follows whom
       allow create: if request.auth != null 
-                   && request.auth.uid == request.resource.data.followerId
-                   // Prevent duplicate follows
-                   && !exists(/databases/$(database)/documents/follows/$(followId))
-                   && !existsAfter(/databases/$(database)/documents/follows/$(followId));
+                   && request.auth.uid == request.resource.data.followerId;
       allow delete: if request.auth != null 
                    && request.auth.uid == resource.data.followerId;
     }

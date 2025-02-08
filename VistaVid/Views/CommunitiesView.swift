@@ -613,7 +613,7 @@ struct CommunitiesView: View {
         ScrollView {
             LazyVStack(spacing: 12) {
                 ForEach(model.users) { user in
-                    NavigationLink(destination: ProfileView(user: user, authModel: AuthenticationViewModel())) {
+                    NavigationLink(destination: UserProfileView(user: user)) {
                         HStack(spacing: 12) {
                             AsyncImage(url: URL(string: user.profilePicUrl ?? "")) { image in
                                 image

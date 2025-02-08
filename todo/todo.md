@@ -13,7 +13,7 @@
 [ ] OmniHuman-1: Rethinking the Scaling-Up of One-Stage Conditioned Human Animation Models
 [ ] DeepSeek-R1: Incentivizing Reasoning Capability in LLMs via Reinforcement Learning
 [ ] Build an open source version of Sider. 
-[ ] Ollama temrinal chat
+[X] Ollama temrinal chat
 [ ] Create a chat interface with Ollama and Gradio
 [ ] Tavily API ()
 [ ] Weights and biases
@@ -24,11 +24,8 @@
 [ ]
 
 #Week 5
-[ ] 
-[ ] 
-[ ] info editing clean up
 [ ] settings clean up
-[ ] 
+
 
 ###USER STORIES
 1.  Upload a video 
@@ -37,10 +34,10 @@
 4.  View a user's profile
 6.  Search for a user
 7.  DM a user
+8.  See liked posts
 9.  Make community 
 
 and posts
-8.  See liked posts
 5.  Follow a user
 
 
