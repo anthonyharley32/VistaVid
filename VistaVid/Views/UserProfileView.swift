@@ -7,7 +7,9 @@ struct UserProfileView: View {
     @State private var followModel = FollowViewModel()
     @State private var messageModel = MessageViewModel()
     @State private var userVideos: [Video] = []
+    @State private var likedVideos: [Video] = []
     @State private var navigateToChat = false
+    @State private var selectedTab = 0
     let user: User
     
     var body: some View {
@@ -62,9 +64,67 @@ struct UserProfileView: View {
                 }
                 .padding(.top, 20)
                 
+                // Tab Selector
+                HStack(spacing: 0) {
+                    ForEach(["Posts", "Likes"], id: \.self) { tab in
+                        Button(action: { 
+                            withAnimation { selectedTab = tab == "Posts" ? 0 : 1 }
+                        }) {
+                            VStack(spacing: 8) {
+                                Image(systemName: tab == "Posts" ? "grid" : "heart")
+                                    .font(.system(size: 20))
+                                Rectangle()
+                                    .fill(selectedTab == (tab == "Posts" ? 0 : 1) ? Color.primary : Color.clear)
+                                    .frame(height: 2)
+                            }
+                            .foregroundColor(selectedTab == (tab == "Posts" ? 0 : 1) ? .primary : .secondary)
+                        }
+                        .frame(maxWidth: .infinity)
+                    }
+                }
+                .padding(.horizontal)
+                .padding(.top, 20)
+                
                 // Videos Grid
-                VideosGridSection(videos: userVideos, videoModel: videoModel)
-                    .padding(.top, 20)
+                if selectedTab == 0 {
+                    if userVideos.isEmpty {
+                        VStack(spacing: 12) {
+                            Image(systemName: "video.fill")
+                                .font(.system(size: 40))
+                                .foregroundColor(.secondary)
+                                .padding(.top, 40)
+                            Text("No posts yet")
+                                .font(.system(size: 16, weight: .medium))
+                            Text("Videos will appear here")
+                                .font(.system(size: 14))
+                                .foregroundColor(.secondary)
+                        }
+                        .frame(maxWidth: .infinity)
+                        .padding(.horizontal)
+                    } else {
+                        VideosGridSection(videos: userVideos, videoModel: videoModel)
+                            .padding(.top, 2)
+                    }
+                } else {
+                    if likedVideos.isEmpty {
+                        VStack(spacing: 12) {
+                            Image(systemName: "heart.fill")
+                                .font(.system(size: 40))
+                                .foregroundColor(.secondary)
+                                .padding(.top, 40)
+                            Text("No likes yet")
+                                .font(.system(size: 16, weight: .medium))
+                            Text("Liked videos will appear here")
+                                .font(.system(size: 14))
+                                .foregroundColor(.secondary)
+                        }
+                        .frame(maxWidth: .infinity)
+                        .padding(.horizontal)
+                    } else {
+                        VideosGridSection(videos: likedVideos, videoModel: videoModel)
+                            .padding(.top, 2)
+                    }
+                }
             }
         }
         .navigationBarTitleDisplayMode(.inline)
@@ -75,7 +135,7 @@ struct UserProfileView: View {
         .onAppear {
             print("👤 UserProfileView appeared for user: \(user.username)")
             Task {
-                await loadUserVideos()
+                await loadContent()
                 followModel.startObservingFollowStatus(for: user.id)
             }
         }
@@ -84,13 +144,21 @@ struct UserProfileView: View {
         }
     }
     
-    private func loadUserVideos() async {
+    private func loadContent() async {
         print("🎥 Fetching videos for user: \(user.id)")
         if let videos = try? await videoModel.fetchUserVideos(userId: user.id) {
             userVideos = videos
             print("✅ Successfully fetched \(videos.count) videos for user: \(user.username)")
         } else {
             print("❌ Failed to fetch videos for user: \(user.username)")
+        }
+        
+        print("❤️ Fetching liked videos for user: \(user.id)")
+        if let liked = try? await videoModel.fetchLikedVideos(userId: user.id) {
+            likedVideos = liked
+            print("✅ Successfully fetched \(liked.count) liked videos for user: \(user.username)")
+        } else {
+            print("❌ Failed to fetch liked videos for user: \(user.username)")
         }
     }
 }

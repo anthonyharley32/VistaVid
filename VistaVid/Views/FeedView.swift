@@ -352,6 +352,12 @@ struct VideoPlayerView: View {
             }
         }
         .ignoresSafeArea()
+        .task {
+            // Check initial like status when video appears
+            if let isVideoLiked = try? await videoViewModel.checkLikeStatus(for: video) {
+                isLiked = isVideoLiked
+            }
+        }
         .onChange(of: isVisible) { oldValue, newValue in
             print(" [VideoPlayerView \(index)]: Visibility changed: \(oldValue) -> \(newValue)")
             Task {

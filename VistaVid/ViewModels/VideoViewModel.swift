@@ -527,6 +527,52 @@ final class VideoViewModel: ObservableObject {
         }
     }
     
+    func fetchLikedVideos(userId: String) async throws -> [Video] {
+        debugLog("❤️ Fetching liked videos for user: \(userId)")
+        
+        do {
+            // Get all likes for the user
+            let likesSnapshot = try await db.collectionGroup("likes")
+                .whereField("userId", isEqualTo: userId)
+                .getDocuments()
+            
+            debugLog("📄 Found \(likesSnapshot.documents.count) likes")
+            
+            if likesSnapshot.documents.isEmpty {
+                debugLog("⚠️ No liked videos found")
+                return []
+            }
+            
+            // Get video IDs from likes
+            let videoIds = likesSnapshot.documents.map { doc in
+                doc.reference.parent.parent!.documentID
+            }
+            
+            // Fetch videos in batches of 10
+            var likedVideos: [Video] = []
+            for chunk in videoIds.chunked(into: 10) {
+                let videosSnapshot = try await db.collection("videos")
+                    .whereField(FieldPath.documentID(), in: chunk)
+                    .getDocuments()
+                
+                let videos = videosSnapshot.documents.compactMap { doc -> Video? in
+                    Video.fromFirestore(doc.data(), id: doc.documentID)
+                }
+                likedVideos.append(contentsOf: videos)
+            }
+            
+            // Sort by most recently liked
+            likedVideos.sort { $0.createdAt > $1.createdAt }
+            debugLog("✅ Successfully fetched \(likedVideos.count) liked videos")
+            
+            return likedVideos
+            
+        } catch {
+            debugLog("❌ Error fetching liked videos: \(error)")
+            throw error
+        }
+    }
+    
     // MARK: - Video Status
     private enum VideoStatus: String, Sendable {
         case uploaded = "uploaded"
@@ -568,6 +614,15 @@ final class VideoViewModel: ObservableObject {
     private func debugLog(_ message: String) {
         if debug {
             print("🎥 [Video]: \(message)")
+        }
+    }
+}
+
+// MARK: - Array Extension
+fileprivate extension Array {
+    func chunked(into size: Int) -> [[Element]] {
+        return stride(from: 0, to: count, by: size).map {
+            Array(self[$0 ..< Swift.min($0 + size, count)])
         }
     }
 }

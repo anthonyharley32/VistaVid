@@ -5,6 +5,7 @@ import AVKit
 struct ProfileView: View {
     @StateObject var videoModel = VideoViewModel()
     @State private var userVideos: [Video] = []
+    @State private var likedVideos: [Video] = []
     @State private var selectedTab = 0
     let user: User
     let authModel: AuthenticationViewModel
@@ -82,19 +83,24 @@ struct ProfileView: View {
                                 .padding(.top, 2)
                         }
                     } else {
-                        VStack(spacing: 12) {
-                            Image(systemName: "heart.fill")
-                                .font(.system(size: 40))
-                                .foregroundColor(.secondary)
-                                .padding(.top, 40)
-                            Text("No likes yet")
-                                .font(.system(size: 16, weight: .medium))
-                            Text("Videos you like will appear here")
-                                .font(.system(size: 14))
-                                .foregroundColor(.secondary)
+                        if likedVideos.isEmpty {
+                            VStack(spacing: 12) {
+                                Image(systemName: "heart.fill")
+                                    .font(.system(size: 40))
+                                    .foregroundColor(.secondary)
+                                    .padding(.top, 40)
+                                Text("No likes yet")
+                                    .font(.system(size: 16, weight: .medium))
+                                Text("Videos you like will appear here")
+                                    .font(.system(size: 14))
+                                    .foregroundColor(.secondary)
+                            }
+                            .frame(maxWidth: .infinity)
+                            .padding(.horizontal)
+                        } else {
+                            VideosGridSection(videos: likedVideos, videoModel: videoModel)
+                                .padding(.top, 2)
                         }
-                        .frame(maxWidth: .infinity)
-                        .padding(.horizontal)
                     }
                 }
             }
@@ -110,9 +116,19 @@ struct ProfileView: View {
             }
         }
         .task {
-            if let videos = try? await videoModel.fetchUserVideos(userId: user.id) {
-                userVideos = videos
-            }
+            await loadContent()
+        }
+    }
+    
+    private func loadContent() async {
+        // Load user videos
+        if let videos = try? await videoModel.fetchUserVideos(userId: user.id) {
+            userVideos = videos
+        }
+        
+        // Load liked videos
+        if let liked = try? await videoModel.fetchLikedVideos(userId: user.id) {
+            likedVideos = liked
         }
     }
 }
