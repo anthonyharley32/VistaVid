@@ -5,6 +5,7 @@ struct Community: Identifiable, Codable {
     // MARK: - Properties
     let id: String
     let name: String
+    let nameLowercase: String
     let description: String
     let iconType: String // "emoji" or "image"
     let iconEmoji: String?
@@ -15,6 +16,7 @@ struct Community: Identifiable, Codable {
     var membersCount: Int
     var members: [String]
     var moderators: [String]
+    var followersCount: Int
     
     var displayIcon: String {
         if iconType == "emoji" {
@@ -27,6 +29,7 @@ struct Community: Identifiable, Codable {
     enum CodingKeys: String, CodingKey {
         case id
         case name
+        case nameLowercase
         case description
         case iconType
         case iconEmoji
@@ -37,6 +40,7 @@ struct Community: Identifiable, Codable {
         case membersCount
         case members
         case moderators
+        case followersCount
     }
     
     init(from decoder: Decoder) throws {
@@ -44,6 +48,7 @@ struct Community: Identifiable, Codable {
         
         id = try container.decode(String.self, forKey: .id)
         name = try container.decode(String.self, forKey: .name)
+        nameLowercase = try container.decodeIfPresent(String.self, forKey: .nameLowercase) ?? name.lowercased()
         description = try container.decode(String.self, forKey: .description)
         iconType = try container.decode(String.self, forKey: .iconType)
         iconEmoji = try container.decode(String?.self, forKey: .iconEmoji)
@@ -61,6 +66,7 @@ struct Community: Identifiable, Codable {
         membersCount = try container.decode(Int.self, forKey: .membersCount)
         members = try container.decode([String].self, forKey: .members)
         moderators = try container.decode([String].self, forKey: .moderators)
+        followersCount = try container.decodeIfPresent(Int.self, forKey: .followersCount) ?? 0
     }
     
     func encode(to encoder: Encoder) throws {
@@ -68,6 +74,7 @@ struct Community: Identifiable, Codable {
         
         try container.encode(id, forKey: .id)
         try container.encode(name, forKey: .name)
+        try container.encode(nameLowercase, forKey: .nameLowercase)
         try container.encode(description, forKey: .description)
         try container.encode(iconType, forKey: .iconType)
         try container.encode(iconEmoji, forKey: .iconEmoji)
@@ -78,6 +85,7 @@ struct Community: Identifiable, Codable {
         try container.encode(membersCount, forKey: .membersCount)
         try container.encode(members, forKey: .members)
         try container.encode(moderators, forKey: .moderators)
+        try container.encode(followersCount, forKey: .followersCount)
     }
     
     // MARK: - Custom Initialization
@@ -92,9 +100,11 @@ struct Community: Identifiable, Codable {
          creatorId: String,
          membersCount: Int = 1,
          members: [String] = [],
-         moderators: [String] = []) {
+         moderators: [String] = [],
+         followersCount: Int = 0) {
         self.id = id
         self.name = name
+        self.nameLowercase = name.lowercased()
         self.description = description
         self.iconType = iconType
         self.iconEmoji = iconEmoji
@@ -105,6 +115,7 @@ struct Community: Identifiable, Codable {
         self.membersCount = membersCount
         self.members = members
         self.moderators = moderators
+        self.followersCount = followersCount
     }
 }
 
@@ -162,7 +173,8 @@ extension Community {
             creatorId: creatorId,
             membersCount: membersCount,
             members: members,
-            moderators: moderators
+            moderators: moderators,
+            followersCount: data["followersCount"] as? Int ?? 0
         )
         
         print("✅ [Community] Successfully created community object")
@@ -184,7 +196,8 @@ extension Community {
             "creatorId": creatorId,
             "membersCount": membersCount,
             "members": members,
-            "moderators": moderators
+            "moderators": moderators,
+            "followersCount": followersCount
         ]
         
         if let iconEmoji = iconEmoji {

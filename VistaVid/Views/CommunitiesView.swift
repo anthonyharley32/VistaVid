@@ -67,81 +67,64 @@ import FirebaseAuth
         
         isLoading = true
         error = nil
-        debugLog("🚀 Starting community search with query: '\(searchText)'")
-        debugLog("📊 Current state - isLoading: \(isLoading), error: \(String(describing: error))")
+        let searchTerm = searchText.lowercased()
+        debugLog("🔍 Starting search with term: '\(searchTerm)'")
         
         do {
-            let searchTerm = searchText.lowercased()
-            debugLog("🔤 Lowercase search term: '\(searchTerm)'")
-            debugLog("🎯 Building query for communities collection")
+            // First, let's verify the index exists
+            debugLog("📋 Checking collection...")
+            let testQuery = db.collection("communities").limit(to: 1)
+            let testSnapshot = try await testQuery.getDocuments()
+            debugLog("✅ Collection exists with \(testSnapshot.documents.count) total documents")
             
-            // Query for communities where name starts with the search term
+            // Now perform the search
             let query = db.collection("communities")
-                .whereField("name", isGreaterThanOrEqualTo: searchText)
-                .whereField("name", isLessThanOrEqualTo: searchText + "\u{f8ff}")
-                .order(by: "name")
+                .whereField("nameLowercase", isGreaterThanOrEqualTo: searchTerm)
+                .whereField("nameLowercase", isLessThan: searchTerm + "\u{f8ff}")  // Changed isLessThanOrEqualTo to isLessThan
+                .order(by: "nameLowercase")
                 .limit(to: 20)
             
-            debugLog("📬 Executing Firestore query...")
+            debugLog("📬 Executing search query...")
             let snapshot = try await query.getDocuments()
-            debugLog("📥 Found \(snapshot.documents.count) communities in Firestore")
+            debugLog("📥 Raw documents count: \(snapshot.documents.count)")
             
             if snapshot.documents.isEmpty {
-                debugLog("❌ No communities found in initial query")
+                debugLog("⚠️ No documents found in Firestore")
             } else {
-                debugLog("📋 Retrieved communities:")
+                debugLog("📋 Retrieved documents:")
                 for doc in snapshot.documents {
                     let data = doc.data()
-                    debugLog("  - ID: \(doc.documentID)")
-                    debugLog("    Name: \(data["name"] as? String ?? "unknown")")
-                    debugLog("    Creator: \(data["creatorId"] as? String ?? "unknown")")
-                    debugLog("    Members: \(data["membersCount"] as? Int ?? 0)")
+                    debugLog("""
+                        Document ID: \(doc.documentID)
+                        - Name: \(data["name"] as? String ?? "unknown")
+                        - NameLowercase: \(data["nameLowercase"] as? String ?? "missing")
+                        - All fields: \(data.keys.joined(separator: ", "))
+                        """)
                 }
             }
-            
-            debugLog("🔄 Processing and filtering results...")
-            var processedCount = 0
-            var failedCount = 0
             
             communities = snapshot.documents.compactMap { document in
-                processedCount += 1
-                debugLog("📄 Processing document \(processedCount)/\(snapshot.documents.count)")
-                
-                guard let community = Community.fromFirestore(document.data(), id: document.documentID) else {
-                    failedCount += 1
-                    debugLog("⚠️ Failed to parse community document: \(document.documentID)")
-                    return nil
+                let community = Community.fromFirestore(document.data(), id: document.documentID)
+                if community == nil {
+                    debugLog("❌ Failed to parse community: \(document.documentID)")
+                    debugLog("📄 Document data: \(document.data())")
                 }
-                
-                let matches = community.name.lowercased().contains(searchTerm)
-                debugLog("🎯 Filtering community '\(community.name)'")
-                debugLog("  - Original name: '\(community.name)'")
-                debugLog("  - Lowercase name: '\(community.name.lowercased())'")
-                debugLog("  - Search term: '\(searchTerm)'")
-                debugLog("  - Matches: \(matches)")
-                return matches ? community : nil
+                return community
             }
             
-            debugLog("📊 Search Results Summary:")
-            debugLog("  - Total documents: \(snapshot.documents.count)")
-            debugLog("  - Processed: \(processedCount)")
-            debugLog("  - Failed to parse: \(failedCount)")
-            debugLog("  - Final results: \(communities.count) communities")
-            
-            if !communities.isEmpty {
-                debugLog("✅ Found communities:")
-                communities.forEach { community in
-                    debugLog("  - \(community.name) (ID: \(community.id))")
-                }
+            debugLog("✅ Final results: \(communities.count) communities")
+            communities.forEach { community in
+                debugLog("  - '\(community.name)' (lowercase: '\(community.nameLowercase)')")
             }
             
         } catch {
+            debugLog("❌ Search error: \(error.localizedDescription)")
+            debugLog("🔍 Detailed error: \(error)")
             self.error = error
             communities = []
         }
         
         isLoading = false
-        debugLog("🏁 Search completed - isLoading: \(isLoading), results: \(communities.count)")
     }
     
     // MARK: - Debug
@@ -259,11 +242,11 @@ struct EmojiPickerView: View {
         "👥", "🌟", "🎮", "📚", "🎨", "🎭", "🎬", "🎵", "🎸", "🎹",
         "⚽️", "🏀", "🎾", "🏈", "⚾️", "🎱", "🎳", "🏓", "🎯", "🎲",
         "🌍", "🌎", "🌏", "🗺️", "🌄", "🌅", "🌇", "🌆", "🏰", "🎡",
-        "🎪", "🎢", "🎠", "🏟️", "🏯", "🏭", "🏬", "🏫", "🏪", "🏩",
+        "🎪", "🎢", "🎠", "️", "🏯", "🏭", "🏬", "🏫", "🏪", "🏩",
         "💻", "📱", "🖥️", "⌨️", "🖱️", "🖨️", "📷", "🎥", "📹", "🎦",
         "🎭", "🎨", "🎪", "🎤", "🎧", "🎼", "🎹", "🥁", "🎷", "🎺",
         "🧩", "🎲", "🎯", "🎳", "🎮", "🎰", "🎱", "🔮", "🎨", "🎭",
-        "🍕", "🍔", "🌮", "🌯", "🍜", "🍣", "🍱", "🥗", "🍪", "🍩"
+        "🍕", "🍔", "🌮", "🌯", "🍜", "🍣", "🍱", "🥗", "", "🍩"
     ]
     
     // Predefined background colors
@@ -481,6 +464,8 @@ struct CommunitiesView: View {
     let model: CommunitiesViewModel
     @State private var selectedTab = 0
     @State private var showCreateCommunity = false
+    @State private var selectedCommunity: Community?
+    @State private var showingCommunityDetail = false
     
     // MARK: - Body
     var body: some View {
@@ -557,6 +542,11 @@ struct CommunitiesView: View {
             }
             .sheet(isPresented: $showCreateCommunity) {
                 CreateCommunityView(communityModel: CommunityViewModel())
+            }
+            .sheet(isPresented: $showingCommunityDetail) {
+                if let community = selectedCommunity {
+                    CommunityDetailSheet(community: community)
+                }
             }
         }
     }
@@ -648,9 +638,9 @@ struct CommunitiesView: View {
         ScrollView {
             LazyVStack(spacing: 12) {
                 ForEach(model.communities) { community in
-                    Button(action: {
-                        // TODO: Navigate to community detail view
-                    }) {
+                    Button {
+                        // Navigation action
+                    } label: {
                         HStack(spacing: 12) {
                             if community.iconType == "emoji" {
                                 Text(community.displayIcon)
@@ -682,7 +672,26 @@ struct CommunitiesView: View {
                         }
                         .padding(.horizontal)
                     }
-                    .buttonStyle(.plain)
+                    .simultaneousGesture(
+                        LongPressGesture(minimumDuration: 0.5)
+                            .onEnded { _ in
+                                selectedCommunity = community
+                                showingCommunityDetail = true
+                            }
+                    )
+                    .highPriorityGesture(
+                        TapGesture()
+                            .onEnded {
+                                // Navigate to CommunityFeedView
+                                // This will be handled by NavigationLink
+                            }
+                    )
+                    .background(
+                        NavigationLink(destination: CommunityFeedView(community: community)) {
+                            EmptyView()
+                        }
+                        .opacity(0)
+                    )
                 }
             }
             .padding(.vertical)

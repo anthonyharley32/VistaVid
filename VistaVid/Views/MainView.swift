@@ -5,6 +5,7 @@ struct MainView: View {
     @State private var selectedTab = 0
     @State private var showingCamera = false
     private let communitiesModel = CommunitiesViewModel()
+    @StateObject private var videoPlayerManager = VideoPlayerManager()
     
     init(authModel: AuthenticationViewModel) {
         self.authModel = authModel
@@ -16,6 +17,7 @@ struct MainView: View {
             TabView(selection: $selectedTab) {
                 // Feed Tab
                 FeedView(authModel: authModel)
+                    .environment(\.videoPlayerManager, videoPlayerManager)
                     .tabItem {
                         Label("Feed", systemImage: "play.rectangle.fill")
                     }
@@ -23,6 +25,7 @@ struct MainView: View {
                 
                 // Communities Tab
                 CommunitiesView(model: communitiesModel)
+                    .environment(\.videoPlayerManager, videoPlayerManager)
                     .tabItem {
                         Label("Communities", systemImage: "person.3.fill")
                     }
@@ -69,6 +72,7 @@ struct MainView: View {
         }
         .fullScreenCover(isPresented: $showingCamera) {
             RecordingView()
+                .environment(\.videoPlayerManager, videoPlayerManager)
         }
         .ignoresSafeArea(.keyboard) // Prevent keyboard from pushing content up
     }

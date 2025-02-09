@@ -17,6 +17,7 @@ struct Video: Identifiable, Codable {
     var businessData: BusinessData?
     var status: String // Add status property
     var hlsUrl: String? // Add HLS URL property
+    var communityId: String?
     
     var url: URL? {
         URL(string: videoUrl)
@@ -32,7 +33,7 @@ struct Video: Identifiable, Codable {
     enum CodingKeys: String, CodingKey {
         case id, userId, videoUrl, thumbnailUrl, description
         case createdAt, algorithmTags, likesCount, commentsCount
-        case sharesCount, businessData, status, hlsUrl
+        case sharesCount, businessData, status, hlsUrl, communityId
     }
     
     init(from decoder: Decoder) throws {
@@ -58,6 +59,7 @@ struct Video: Identifiable, Codable {
         businessData = try container.decodeIfPresent(BusinessData.self, forKey: .businessData)
         status = try container.decodeIfPresent(String.self, forKey: .status) ?? "uploaded"
         hlsUrl = try container.decodeIfPresent(String.self, forKey: .hlsUrl)
+        communityId = try container.decodeIfPresent(String.self, forKey: .communityId)
     }
     
     func encode(to encoder: Encoder) throws {
@@ -76,6 +78,7 @@ struct Video: Identifiable, Codable {
         try container.encodeIfPresent(businessData, forKey: .businessData)
         try container.encode(status, forKey: .status)
         try container.encodeIfPresent(hlsUrl, forKey: .hlsUrl)
+        try container.encodeIfPresent(communityId, forKey: .communityId)
     }
     
     // MARK: - Custom Initialization
@@ -91,7 +94,8 @@ struct Video: Identifiable, Codable {
          sharesCount: Int = 0,
          businessData: BusinessData? = nil,
          status: String = "uploading",
-         hlsUrl: String? = nil) {
+         hlsUrl: String? = nil,
+         communityId: String? = nil) {
         self.id = id
         self.userId = userId
         self.videoUrl = videoUrl
@@ -105,6 +109,7 @@ struct Video: Identifiable, Codable {
         self.businessData = businessData
         self.status = status
         self.hlsUrl = hlsUrl
+        self.communityId = communityId
     }
 }
 
@@ -113,7 +118,8 @@ extension Video {
     static func fromFirestore(_ data: [String: Any], id: String) -> Video? {
         guard let userId = data["userId"] as? String,
               let videoUrl = data["videoUrl"] as? String,
-              let description = data["description"] as? String else {
+              let description = data["description"] as? String,
+              let createdAt = (data["createdAt"] as? Timestamp)?.dateValue() else {
             return nil
         }
         
@@ -132,14 +138,15 @@ extension Video {
             videoUrl: videoUrl,
             thumbnailUrl: data["thumbnailUrl"] as? String,
             description: description,
-            createdAt: (data["createdAt"] as? Timestamp)?.dateValue() ?? Date(),
+            createdAt: createdAt,
             algorithmTags: data["algorithmTags"] as? [String] ?? [],
             likesCount: data["likesCount"] as? Int ?? 0,
             commentsCount: data["commentsCount"] as? Int ?? 0,
             sharesCount: data["sharesCount"] as? Int ?? 0,
             businessData: businessData,
             status: data["status"] as? String ?? "uploaded",
-            hlsUrl: data["hlsUrl"] as? String
+            hlsUrl: data["hlsUrl"] as? String,
+            communityId: data["communityId"] as? String
         )
     }
     
@@ -169,6 +176,10 @@ extension Video {
         
         if let hlsUrl = hlsUrl {
             data["hlsUrl"] = hlsUrl
+        }
+        
+        if let communityId = communityId {
+            data["communityId"] = communityId
         }
         
         return data

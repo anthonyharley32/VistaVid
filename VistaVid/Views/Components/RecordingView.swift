@@ -5,6 +5,7 @@ struct RecordingView: View {
     // MARK: - Properties
     @StateObject private var cameraManager = CameraManager()
     @Environment(\.videoViewModel) private var videoViewModel
+    @Environment(\.videoPlayerManager) private var videoPlayerManager
     @State private var showingDescriptionSheet = false
     @State private var description = ""
     @State private var selectedAlgorithmTags: [String] = []
@@ -13,6 +14,8 @@ struct RecordingView: View {
     @Environment(\.scenePhase) private var scenePhase
     @Environment(\.dismiss) private var dismiss
     @Environment(\.presentationMode) private var presentationMode
+    @State private var selectedCommunityId = ""
+    @StateObject private var communityModel = CommunityViewModel()
     
     // MARK: - Body
     var body: some View {
@@ -92,6 +95,8 @@ struct RecordingView: View {
         .statusBar(hidden: true) // Hide status bar
         .task {
             print("🎥 [RecordingView]: View appeared, initializing camera")
+            // Clean up any playing videos
+            videoPlayerManager.cleanup()
             await MainActor.run {
                 cameraManager.checkPermissions()
                 cameraManager.setupCamera()
@@ -126,6 +131,29 @@ struct RecordingView: View {
                     }
                     .padding(.horizontal)
                     
+                    // Community Selection
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("Community (Optional)")
+                            .font(.subheadline)
+                            .foregroundColor(.secondary)
+                        
+                        if communityModel.isLoading {
+                            ProgressView()
+                        } else {
+                            Picker("Select Community", selection: $selectedCommunityId) {
+                                Text("None").tag("")
+                                ForEach(communityModel.communities) { community in
+                                    Text(community.name).tag(community.id)
+                                }
+                            }
+                            .pickerStyle(.menu)
+                        }
+                    }
+                    .padding(.horizontal)
+                    .task {
+                        await communityModel.fetchCommunities()
+                    }
+                    
                     // Upload button
                     Button(action: {
                         Task {
@@ -142,7 +170,8 @@ struct RecordingView: View {
                                 try await videoViewModel.uploadVideo(
                                     videoURL: videoURL,
                                     description: description,
-                                    algorithmTags: selectedAlgorithmTags
+                                    algorithmTags: selectedAlgorithmTags,
+                                    communityId: selectedCommunityId
                                 )
                                 print("✅ [RecordingView]: Video upload successful")
                                 showingDescriptionSheet = false
@@ -552,4 +581,18 @@ extension RecordingView {
 #Preview {
     RecordingView()
         .environment(\.videoViewModel, VideoViewModel())
+}
+
+// MARK: - Environment Keys
+private struct VideoPlayerManagerKey: EnvironmentKey {
+    @MainActor static var defaultValue: VideoPlayerManager {
+        VideoPlayerManager()
+    }
+}
+
+extension EnvironmentValues {
+    var videoPlayerManager: VideoPlayerManager {
+        get { self[VideoPlayerManagerKey.self] }
+        set { self[VideoPlayerManagerKey.self] = newValue }
+    }
 }

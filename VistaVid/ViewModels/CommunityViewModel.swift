@@ -24,50 +24,39 @@ import FirebaseAuth
     func createCommunity(
         name: String,
         description: String,
-        iconType: String = "emoji",
-        iconEmoji: String? = "👥",
-        iconImageUrl: String? = nil,
-        backgroundColor: String = "#007AFF"
+        iconType: String,
+        iconEmoji: String?,
+        iconImageUrl: String?,
+        backgroundColor: String
     ) async throws {
-        debugLog("🌟 Creating new community: \(name)")
-        debugLog("🔐 Current user ID: \(Auth.auth().currentUser?.uid ?? "no user")")
+        debugLog("📝 Creating community with name: '\(name)'")
         
-        guard let currentUser = Auth.auth().currentUser else {
-            debugLog("❌ No authenticated user found")
-            throw NSError(domain: "Community", code: 401, userInfo: [NSLocalizedDescriptionKey: "User not authenticated"])
-        }
+        let data: [String: Any] = [
+            "name": name,
+            "nameLowercase": name.lowercased(),
+            "description": description,
+            "iconType": iconType,
+            "iconEmoji": iconEmoji as Any,
+            "iconImageUrl": iconImageUrl as Any,
+            "backgroundColor": backgroundColor,
+            "createdAt": Timestamp(date: Date()),
+            "creatorId": Auth.auth().currentUser?.uid ?? "",
+            "membersCount": 1,
+            "members": [Auth.auth().currentUser?.uid ?? ""],
+            "moderators": [Auth.auth().currentUser?.uid ?? ""],
+            "followersCount": 0
+        ]
         
-        isLoading = true
-        defer { isLoading = false }
+        debugLog("📋 Community data:")
+        debugLog("  - Name: \(name)")
+        debugLog("  - NameLowercase: \(name.lowercased())")
+        debugLog("  - IconType: \(iconType)")
         
         do {
-            let community = Community(
-                name: name,
-                description: description,
-                iconType: iconType,
-                iconEmoji: iconEmoji,
-                iconImageUrl: iconImageUrl,
-                backgroundColor: backgroundColor,
-                creatorId: currentUser.uid,
-                membersCount: 1,
-                members: [currentUser.uid],
-                moderators: [currentUser.uid]
-            )
-            
-            debugLog("📝 Created community object with ID: \(community.id)")
-            let data = community.toDictionary()
-            debugLog("📦 Community data to save: \(data)")
-            
-            try await db.collection("communities").document(community.id)
-                .setData(data)
-            
-            debugLog("✅ Community created successfully in Firestore")
-            debugLog("🔄 Fetching updated communities list")
-            await fetchCommunities()
-            
+            let docRef = try await db.collection("communities").addDocument(data: data)
+            debugLog("✅ Community created with ID: \(docRef.documentID)")
         } catch {
-            debugLog("❌ Error creating community: \(error.localizedDescription)")
-            debugLog("🔍 Detailed error: \(error)")
+            debugLog("❌ Failed to create community: \(error.localizedDescription)")
             throw error
         }
     }

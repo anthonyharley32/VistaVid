@@ -53,7 +53,7 @@ private struct FeedContentView: View {
 
 struct FeedView: View {
     @StateObject private var viewModel = VideoViewModel()
-    @StateObject private var videoManager = VideoPlayerManager()
+    @Environment(\.videoPlayerManager) private var videoManager
     @State private var currentIndex: Int?
     @State private var visibleIndex: Int?
     @ObservedObject var authModel: AuthenticationViewModel

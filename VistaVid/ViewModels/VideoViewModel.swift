@@ -97,7 +97,7 @@ final class VideoViewModel: ObservableObject {
     // MARK: - Video Upload Methods
     
     /// Uploads a new video
-    func uploadVideo(videoURL: URL, description: String, algorithmTags: [String]) async throws {
+    func uploadVideo(videoURL: URL, description: String, algorithmTags: [String], communityId: String? = nil) async throws {
         debugLog("📤 Starting video upload process")
         
         // Check authentication
@@ -135,7 +135,8 @@ final class VideoViewModel: ObservableObject {
                 thumbnailUrl: nil,
                 description: description,
                 createdAt: Date(),
-                algorithmTags: algorithmTags
+                algorithmTags: algorithmTags,
+                communityId: communityId
             )
             var initialVideoDict = initialVideo.toDictionary()
             initialVideoDict["status"] = "uploading" // Add status field
@@ -229,20 +230,25 @@ final class VideoViewModel: ObservableObject {
         }
     }
     
-    private func fetchUserForVideo(_ video: Video) async -> User? {
+    /// Fetches user data for a video
+    func fetchUserForVideo(_ video: Video) async -> User? {
+        debugLog("👤 Fetching user data for video: \(video.id)")
+        
         do {
             let userDoc = try await db.collection("users").document(video.userId).getDocument()
-            guard let userData = userDoc.data() else { return nil }
+            guard let userData = userDoc.data() else {
+                debugLog("❌ No user data found for ID: \(video.userId)")
+                return nil
+            }
             
-            return User(
-                id: video.userId,
-                username: userData["username"] as? String ?? "unknown",
-                email: userData["email"] as? String ?? "",
-                createdAt: (userData["createdAt"] as? Timestamp)?.dateValue() ?? Date(),
-                profilePicUrl: userData["profilePicUrl"] as? String,
-                isBusiness: userData["isBusiness"] as? Bool ?? false,
-                selectedAlgorithms: userData["selectedAlgorithms"] as? [String] ?? []
-            )
+            // Add the document ID to the user data before decoding
+            var userDataWithId = userData
+            userDataWithId["id"] = userDoc.documentID
+            
+            let user = try Firestore.Decoder().decode(User.self, from: userDataWithId)
+            debugLog("✅ Successfully fetched user data for video")
+            return user
+            
         } catch {
             debugLog("❌ Error fetching user data: \(error)")
             return nil
@@ -634,6 +640,36 @@ final class VideoViewModel: ObservableObject {
     private func debugLog(_ message: String) {
         if debug {
             print("🎥 [Video]: \(message)")
+        }
+    }
+    
+    // MARK: - Community Videos
+    
+    /// Fetches videos for a specific community
+    func fetchCommunityVideos(communityId: String) async throws -> [Video] {
+        debugLog("🎬 Fetching videos for community: \(communityId)")
+        
+        do {
+            let query = db.collection("videos")
+                .whereField("communityId", isEqualTo: communityId)
+                .order(by: "createdAt", descending: true)
+            
+            let snapshot = try await query.getDocuments()
+            debugLog("📄 Got \(snapshot.documents.count) community videos")
+            
+            let videos = snapshot.documents.compactMap { document -> Video? in
+                guard var video = Video.fromFirestore(document.data(), id: document.documentID) else {
+                    debugLog("❌ Failed to parse video document: \(document.documentID)")
+                    return nil
+                }
+                return video
+            }
+            
+            debugLog("✅ Successfully fetched community videos")
+            return videos
+        } catch {
+            debugLog("❌ Error fetching community videos: \(error)")
+            throw error
         }
     }
 }
