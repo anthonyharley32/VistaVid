@@ -8,16 +8,22 @@ struct CustomVideoPlayer: UIViewRepresentable {
     init(player: AVPlayer, gravity: AVLayerVideoGravity = .resizeAspectFill) {
         self.player = player
         self.gravity = gravity
+        print("🎮 [CustomVideoPlayer]: Initialized with player: \(player)")
     }
     
     func makeUIView(context: Context) -> PlayerView {
+        print("🎮 [CustomVideoPlayer]: Creating PlayerView")
         let view = PlayerView()
         view.player = player
         view.playerLayer.videoGravity = gravity
+        print("✅ [CustomVideoPlayer]: PlayerView created and configured")
         return view
     }
     
     func updateUIView(_ uiView: PlayerView, context: Context) {
+        print("🔄 [CustomVideoPlayer]: Updating PlayerView")
+        print("  - Old player: \(String(describing: uiView.player))")
+        print("  - New player: \(String(describing: player))")
         uiView.player = player
         uiView.playerLayer.videoGravity = gravity
     }

@@ -213,14 +213,18 @@ struct VideoPlayerView: View {
     var body: some View {
         GeometryReader { geometry in
             ZStack {
-                Color.black.ignoresSafeArea()
-                
+                // Show thumbnail immediately if cached
                 if let thumbnail = thumbnail {
                     Image(uiImage: thumbnail)
                         .resizable()
                         .aspectRatio(contentMode: .fill)
                         .frame(width: geometry.size.width, height: UIScreen.main.bounds.height)
                         .clipped()
+                } else {
+                    // Show placeholder while loading thumbnail
+                    Rectangle()
+                        .fill(Color.black)
+                        .frame(width: geometry.size.width, height: UIScreen.main.bounds.height)
                 }
                 
                 if isLoading {

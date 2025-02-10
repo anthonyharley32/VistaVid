@@ -2,9 +2,11 @@ import SwiftUI
 import AVFoundation
 
 @Observable final class ThumbnailManager {
+    static let shared = ThumbnailManager() // Make it a singleton
+    
     // MARK: - Properties
     private var cache: [String: UIImage] = [:]
-    private let maxCacheSize = 50 // Maximum number of thumbnails to cache
+    private let maxCacheSize = 100 // Increased from 50
     
     // MARK: - Public Methods
     func thumbnail(for url: URL) async -> UIImage? {
@@ -43,5 +45,17 @@ import AVFoundation
     func clearCache() {
         print("🧹 [ThumbnailManager]: Clearing cache")
         cache.removeAll()
+    }
+    
+    // Add preloading method
+    func preloadThumbnails(for urls: [URL]) async {
+        print("🖼️ [ThumbnailManager]: Preloading thumbnails for \(urls.count) videos")
+        await withTaskGroup(of: Void.self) { group in
+            for url in urls {
+                group.addTask {
+                    _ = await self.thumbnail(for: url)
+                }
+            }
+        }
     }
 }

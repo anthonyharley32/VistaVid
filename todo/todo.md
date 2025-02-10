@@ -1,7 +1,14 @@
 ### TODO
 
-#Week 5
+#Week 6
 [ ] settings clean up
+[ ] Community page
+[ ] Algorithm Accountability
+[ ] Content
+[ ] Hands Free Mode
+[ ] Content Moderation
+[ ] AI-enhanced Search
+[ ] play/pause button
 
 
 ###COMPLETEDUSER STORIES
@@ -15,6 +22,7 @@
 8.  See liked posts
 9.  Make community 
 and posts
+
 
 
 
