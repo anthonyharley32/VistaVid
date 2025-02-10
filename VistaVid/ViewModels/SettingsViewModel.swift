@@ -22,12 +22,12 @@ import Foundation
     
     init() {
         // Setup blink detection callbacks
-        blinkManager.onSingleBlink = { [weak self] in
+        blinkManager.onSingleBlink = {
             print("👁️ Single blink detected - Navigating to next video")
             NotificationCenter.default.post(name: NSNotification.Name("NavigateToNextVideo"), object: nil)
         }
         
-        blinkManager.onDoubleBlink = { [weak self] in
+        blinkManager.onDoubleBlink = {
             print("👁️ Double blink detected - Navigating to previous video")
             NotificationCenter.default.post(name: NSNotification.Name("NavigateToPreviousVideo"), object: nil)
         }
