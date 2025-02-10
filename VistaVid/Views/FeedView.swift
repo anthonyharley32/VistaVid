@@ -138,12 +138,14 @@ struct FeedView: View {
             forName: NSNotification.Name("NavigateToNextVideo"),
             object: nil,
             queue: .main
-        ) { [weak videoManager] _ in
-            guard let currentIndex = visibleIndex else { return }
-            let nextIndex = min(currentIndex + 1, videoViewModel.videos.count - 1)
-            withAnimation {
-                self.currentIndex = nextIndex
-                self.visibleIndex = nextIndex
+        ) { notification in
+            Task { @MainActor in
+                guard let currentIndex = visibleIndex else { return }
+                let nextIndex = min(currentIndex + 1, videoViewModel.videos.count - 1)
+                withAnimation {
+                    self.currentIndex = nextIndex
+                    self.visibleIndex = nextIndex
+                }
             }
         }
         
@@ -151,12 +153,14 @@ struct FeedView: View {
             forName: NSNotification.Name("NavigateToPreviousVideo"),
             object: nil,
             queue: .main
-        ) { [weak videoManager] _ in
-            guard let currentIndex = visibleIndex else { return }
-            let previousIndex = max(currentIndex - 1, 0)
-            withAnimation {
-                self.currentIndex = previousIndex
-                self.visibleIndex = previousIndex
+        ) { notification in
+            Task { @MainActor in
+                guard let currentIndex = visibleIndex else { return }
+                let previousIndex = max(currentIndex - 1, 0)
+                withAnimation {
+                    self.currentIndex = previousIndex
+                    self.visibleIndex = previousIndex
+                }
             }
         }
     }
