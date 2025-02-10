@@ -31,9 +31,13 @@ import FirebaseAuth
     ) async throws {
         debugLog("📝 Creating community with name: '\(name)'")
         
+        // Ensure the name is properly formatted
+        let trimmedName = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        let nameLowercase = trimmedName.lowercased()
+        
         let data: [String: Any] = [
-            "name": name,
-            "nameLowercase": name.lowercased(),
+            "name": trimmedName,
+            "nameLowercase": nameLowercase,
             "description": description,
             "iconType": iconType,
             "iconEmoji": iconEmoji as Any,
@@ -48,11 +52,25 @@ import FirebaseAuth
         ]
         
         debugLog("📋 Community data:")
-        debugLog("  - Name: \(name)")
-        debugLog("  - NameLowercase: \(name.lowercased())")
+        debugLog("  - Name: \(trimmedName)")
+        debugLog("  - NameLowercase: \(nameLowercase)")
         debugLog("  - IconType: \(iconType)")
         
         do {
+            // First check if a community with this name already exists
+            let existingQuery = db.collection("communities")
+                .whereField("nameLowercase", isEqualTo: nameLowercase)
+            let existingDocs = try await existingQuery.getDocuments()
+            
+            guard existingDocs.documents.isEmpty else {
+                debugLog("❌ Community with this name already exists")
+                throw NSError(
+                    domain: "Community",
+                    code: 409,
+                    userInfo: [NSLocalizedDescriptionKey: "A community with this name already exists"]
+                )
+            }
+            
             let docRef = try await db.collection("communities").addDocument(data: data)
             debugLog("✅ Community created with ID: \(docRef.documentID)")
         } catch {

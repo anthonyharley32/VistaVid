@@ -52,8 +52,8 @@ private struct FeedContentView: View {
 }
 
 struct FeedView: View {
-    @StateObject private var viewModel = VideoViewModel()
-    @Environment(\.videoPlayerManager) private var videoManager
+    @StateObject private var videoViewModel = VideoViewModel()
+    @StateObject private var videoManager = VideoPlayerManager()
     @State private var currentIndex: Int?
     @State private var visibleIndex: Int?
     @ObservedObject var authModel: AuthenticationViewModel
@@ -68,51 +68,76 @@ struct FeedView: View {
     var body: some View {
         NavigationStack {
             GeometryReader { geometry in
-                if viewModel.isLoading {
+                if videoViewModel.isLoading {
                     ProgressView()
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
-                } else if viewModel.videos.isEmpty {
-                    Text("No videos available")
-                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                } else if videoViewModel.videos.isEmpty {
+                    ContentUnavailableView("No Videos", 
+                        systemImage: "video.slash",
+                        description: Text("Be the first to post!"))
                 } else {
-                    FeedContentView(
-                        geometry: geometry,
-                        videos: viewModel.videos,
-                        videoManager: videoManager,
-                        currentIndex: $currentIndex,
-                        visibleIndex: $visibleIndex,
-                        selectedUser: $selectedUser,
-                        authModel: authModel
-                    )
-                    .onChange(of: visibleIndex) { oldValue, newValue in
-                        print(" [FeedView]: Visible index changed from \(String(describing: oldValue)) to \(String(describing: newValue))")
-                        if let index = newValue {
-                            videoManager.pauseAllExcept(index: index)
-                        } else {
-                            videoManager.cleanup()
+                    ScrollView(.vertical, showsIndicators: false) {
+                        LazyVStack(spacing: 0) {
+                            ForEach(Array(videoViewModel.videos.enumerated()), id: \.element.id) { (index: Int, video: Video) in
+                                VideoPlayerView(
+                                    video: video,
+                                    index: index,
+                                    videoManager: videoManager,
+                                    isVisible: visibleIndex == index,
+                                    onUserTap: { handleUserTap(video: video) }
+                                )
+                                .frame(width: geometry.size.width, height: geometry.size.height)
+                                .onAppear {
+                                    print(" [FeedView]: Video \(index) appeared")
+                                    if currentIndex == nil {
+                                        currentIndex = index
+                                        visibleIndex = index
+                                    }
+                                }
+                                .modifier(VisibilityModifier(index: index, currentVisibleIndex: $visibleIndex))
+                                .onDisappear {
+                                    print(" [FeedView]: Video \(index) disappeared")
+                                }
+                            }
                         }
                     }
-                    .onChange(of: viewModel.videos) { _, newVideos in
-                        print(" [FeedView]: Updating video manager with \(newVideos.count) videos")
+                    .scrollTargetBehavior(.paging)
+                    .scrollPosition(id: $currentIndex)
+                    .onChange(of: videoViewModel.videos) { _, newVideos in
+                        print("📱 [FeedView]: Updating videos array with \(newVideos.count) videos")
                         videoManager.updateVideos(newVideos)
                     }
-                    .onDisappear {
-                        videoManager.cleanup()
+                    .onChange(of: visibleIndex) { oldValue, newValue in
+                        print("📱 [FeedView]: Visibility changed from \(String(describing: oldValue)) to \(String(describing: newValue))")
+                        if let index = newValue {
+                            videoManager.pauseAllExcept(index: index)
+                        }
                     }
                 }
             }
             .background(Color(.systemBackground))
             .ignoresSafeArea()
             .statusBar(hidden: true)
-            .environment(\.videoViewModel, viewModel)
             .onAppear {
+                print("📱 [FeedView]: View appeared, loading videos")
                 Task {
-                    await viewModel.loadVideos()
+                    await videoViewModel.loadVideos()
                 }
             }
             .navigationDestination(item: $selectedUser) { user in
                 UserProfileView(user: user)
             }
+        }
+        .environment(\.videoViewModel, videoViewModel)
+    }
+    
+    private func handleUserTap(video: Video) {
+        if video.user?.id == authModel.currentUser?.id {
+            print(" [FeedView]: Navigating to You tab")
+            NotificationCenter.default.post(name: NSNotification.Name("NavigateToYouTab"), object: nil)
+        } else {
+            print(" [FeedView]: Navigating to UserProfileView")
+            selectedUser = video.user
         }
     }
 }

@@ -657,7 +657,7 @@ final class VideoViewModel: ObservableObject {
             debugLog("📄 Got \(snapshot.documents.count) community videos")
             
             let videos = snapshot.documents.compactMap { document -> Video? in
-                guard var video = Video.fromFirestore(document.data(), id: document.documentID) else {
+                guard let video = Video.fromFirestore(document.data(), id: document.documentID) else {
                     debugLog("❌ Failed to parse video document: \(document.documentID)")
                     return nil
                 }

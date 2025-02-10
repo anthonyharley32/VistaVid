@@ -67,55 +67,46 @@ import FirebaseAuth
         
         isLoading = true
         error = nil
-        let searchTerm = searchText.lowercased()
+        let searchTerm = searchText.lowercased().trimmingCharacters(in: .whitespacesAndNewlines)
         debugLog("🔍 Starting search with term: '\(searchTerm)'")
         
         do {
-            // First, let's verify the index exists
-            debugLog("📋 Checking collection...")
-            let testQuery = db.collection("communities").limit(to: 1)
-            let testSnapshot = try await testQuery.getDocuments()
-            debugLog("✅ Collection exists with \(testSnapshot.documents.count) total documents")
+            // First, let's get all communities and log them to see what we have
+            let allCommunitiesQuery = db.collection("communities")
+            let allSnapshot = try await allCommunitiesQuery.getDocuments()
+            debugLog("📊 Total communities in database: \(allSnapshot.documents.count)")
+            
+            for doc in allSnapshot.documents {
+                let data = doc.data()
+                debugLog("""
+                    Available community:
+                    - ID: \(doc.documentID)
+                    - Name: \(data["name"] as? String ?? "unknown")
+                    - NameLowercase: \(data["nameLowercase"] as? String ?? "missing")
+                    """)
+            }
             
             // Now perform the search
             let query = db.collection("communities")
                 .whereField("nameLowercase", isGreaterThanOrEqualTo: searchTerm)
-                .whereField("nameLowercase", isLessThan: searchTerm + "\u{f8ff}")  // Changed isLessThanOrEqualTo to isLessThan
-                .order(by: "nameLowercase")
-                .limit(to: 20)
+                .whereField("nameLowercase", isLessThan: searchTerm + "\u{f8ff}")
             
             debugLog("📬 Executing search query...")
             let snapshot = try await query.getDocuments()
             debugLog("📥 Raw documents count: \(snapshot.documents.count)")
             
-            if snapshot.documents.isEmpty {
-                debugLog("⚠️ No documents found in Firestore")
-            } else {
-                debugLog("📋 Retrieved documents:")
-                for doc in snapshot.documents {
-                    let data = doc.data()
-                    debugLog("""
-                        Document ID: \(doc.documentID)
-                        - Name: \(data["name"] as? String ?? "unknown")
-                        - NameLowercase: \(data["nameLowercase"] as? String ?? "missing")
-                        - All fields: \(data.keys.joined(separator: ", "))
-                        """)
-                }
-            }
-            
             communities = snapshot.documents.compactMap { document in
-                let community = Community.fromFirestore(document.data(), id: document.documentID)
-                if community == nil {
-                    debugLog("❌ Failed to parse community: \(document.documentID)")
-                    debugLog("📄 Document data: \(document.data())")
-                }
-                return community
+                let data = document.data()
+                debugLog("""
+                    Document found:
+                    - ID: \(document.documentID)
+                    - Name: \(data["name"] as? String ?? "unknown")
+                    - NameLowercase: \(data["nameLowercase"] as? String ?? "missing")
+                    """)
+                return Community.fromFirestore(document.data(), id: document.documentID)
             }
             
-            debugLog("✅ Final results: \(communities.count) communities")
-            communities.forEach { community in
-                debugLog("  - '\(community.name)' (lowercase: '\(community.nameLowercase)')")
-            }
+            debugLog("✅ Search complete. Found \(communities.count) communities")
             
         } catch {
             debugLog("❌ Search error: \(error.localizedDescription)")
