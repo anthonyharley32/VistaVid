@@ -120,6 +120,7 @@ struct FeedView: View {
             .statusBar(hidden: true)
             .onAppear {
                 print("📱 [FeedView]: View appeared, loading videos")
+                setupNotificationObservers()
                 Task {
                     await videoViewModel.loadVideos()
                 }
@@ -129,6 +130,35 @@ struct FeedView: View {
             }
         }
         .environment(\.videoViewModel, videoViewModel)
+    }
+    
+    private func setupNotificationObservers() {
+        // Add observers for blink navigation
+        NotificationCenter.default.addObserver(
+            forName: NSNotification.Name("NavigateToNextVideo"),
+            object: nil,
+            queue: .main
+        ) { [weak videoManager] _ in
+            guard let currentIndex = visibleIndex else { return }
+            let nextIndex = min(currentIndex + 1, videoViewModel.videos.count - 1)
+            withAnimation {
+                self.currentIndex = nextIndex
+                self.visibleIndex = nextIndex
+            }
+        }
+        
+        NotificationCenter.default.addObserver(
+            forName: NSNotification.Name("NavigateToPreviousVideo"),
+            object: nil,
+            queue: .main
+        ) { [weak videoManager] _ in
+            guard let currentIndex = visibleIndex else { return }
+            let previousIndex = max(currentIndex - 1, 0)
+            withAnimation {
+                self.currentIndex = previousIndex
+                self.visibleIndex = previousIndex
+            }
+        }
     }
     
     private func handleUserTap(video: Video) {

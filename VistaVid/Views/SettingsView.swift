@@ -2,6 +2,7 @@ import SwiftUI
 
 struct SettingsView: View {
     let model: AuthenticationViewModel
+    let settingsModel = SettingsViewModel()
     @Environment(\.dismiss) private var dismiss
     @State private var showingAlert = false
     @State private var alertMessage = ""
@@ -92,6 +93,32 @@ struct SettingsView: View {
                     .textCase(nil)
                     .foregroundColor(.primary)
                     .font(.headline)
+            }
+            
+            // Accessibility Settings
+            Section {
+                Toggle(isOn: .init(
+                    get: { settingsModel.isHandsFreeEnabled },
+                    set: { settingsModel.isHandsFreeEnabled = $0 }
+                )) {
+                    Label {
+                        VStack(alignment: .leading) {
+                            Text("Hands-Free Mode")
+                            Text("Navigate videos using eye blinks")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                        }
+                    } icon: {
+                        Image(systemName: "eye")
+                    }
+                }
+            } header: {
+                Label("Accessibility", systemImage: "accessibility")
+                    .textCase(nil)
+                    .foregroundColor(.primary)
+                    .font(.headline)
+            } footer: {
+                Text("Single blink to go to next video, double blink to go to previous video")
             }
             
             // Support & Legal
