@@ -1,7 +1,7 @@
 import Foundation
 import FirebaseFirestore
 
-struct Video: Identifiable, Codable {
+struct Video: Identifiable, Codable, Equatable {
     // MARK: - Properties
     let id: String
     let userId: String
@@ -110,6 +110,11 @@ struct Video: Identifiable, Codable {
         self.status = status
         self.hlsUrl = hlsUrl
         self.communityId = communityId
+    }
+    
+    // MARK: - Equatable
+    static func == (lhs: Video, rhs: Video) -> Bool {
+        lhs.id == rhs.id
     }
 }
 

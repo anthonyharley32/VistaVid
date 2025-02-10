@@ -92,6 +92,10 @@ struct FeedView: View {
                             videoManager.cleanup()
                         }
                     }
+                    .onChange(of: viewModel.videos) { _, newVideos in
+                        print(" [FeedView]: Updating video manager with \(newVideos.count) videos")
+                        videoManager.updateVideos(newVideos)
+                    }
                     .onDisappear {
                         videoManager.cleanup()
                     }
@@ -563,11 +567,14 @@ struct VideoPlayerView: View {
 @MainActor
 final class VideoPlayerManager: ObservableObject {
     private var players: [Int: AVQueuePlayer] = [:]
-    private var preloadedAssets: [Int: AVURLAsset] = [:]
-    private var currentIndex: Int?
     private var timeObserverTokens: [Int: Any] = [:]
-    private let preloadWindow = 2
-    @Environment(\.videoViewModel) private var videoViewModel
+    private var currentIndex: Int?
+    private var videos: [Video] = []
+    private let preloadUtility = VideoPreloadUtility()
+    
+    func updateVideos(_ newVideos: [Video]) {
+        videos = newVideos
+    }
     
     func register(player: AVQueuePlayer, for index: Int) {
         print(" [VideoPlayerManager]: START Registering player for index: \(index)")
@@ -575,15 +582,28 @@ final class VideoPlayerManager: ObservableObject {
         // Remove any existing player for this index
         unregister(index: index)
         
-        // Add periodic time observer
+        // Add periodic time observer with state tracking
+        var lastPlaybackState: AVPlayer.TimeControlStatus?
         let timeObserver = player.addPeriodicTimeObserver(
             forInterval: CMTime(seconds: 0.5, preferredTimescale: 600),
             queue: .main
         ) { [weak player] _ in
             guard let player = player else { return }
-            if player.timeControlStatus == .playing {
-                print(" [VideoPlayerManager]: Player \(index) is actively playing")
+            let currentState = player.timeControlStatus
+            
+            // Only log when state changes
+            if currentState != lastPlaybackState {
+                if currentState == .playing {
+                    print(" [VideoPlayerManager]: Player \(index) started playing")
+                }
+                lastPlaybackState = currentState
             }
+        }
+        
+        // Configure player for better buffering
+        if let currentItem = player.currentItem {
+            currentItem.preferredForwardBufferDuration = 4.0
+            currentItem.automaticallyPreservesTimeOffsetFromLive = false
         }
         
         // Store the new player and its observer
@@ -593,105 +613,12 @@ final class VideoPlayerManager: ObservableObject {
         
         // Preload adjacent videos
         Task {
-            await preloadAdjacentVideos(around: index)
+            await preloadUtility.preloadAdjacentVideos(around: index, videos: videos)
         }
     }
     
     func getPreloadedAsset(for index: Int) -> AVURLAsset? {
-        return preloadedAssets[index]
-    }
-    
-    private func preloadAdjacentVideos(around index: Int) async {
-        print(" [VideoPlayerManager]: START Preloading adjacent videos around index \(index)")
-        
-        // Ensure we have videos to preload
-        guard !videoViewModel.videos.isEmpty else {
-            print(" [VideoPlayerManager]: No videos to preload")
-            return
-        }
-        
-        // Calculate preload range with bounds checking
-        let startIndex = max(0, index - preloadWindow)
-        let endIndex = min(videoViewModel.videos.count - 1, index + preloadWindow)
-        
-        // Validate range
-        guard startIndex <= endIndex else {
-            print(" [VideoPlayerManager]: Invalid range: start(\(startIndex)) > end(\(endIndex))")
-            return
-        }
-        
-        // Clean up assets outside the preload window
-        let indicesToRemove = preloadedAssets.keys.filter { $0 < startIndex || $0 > endIndex }
-        for oldIndex in indicesToRemove {
-            preloadedAssets.removeValue(forKey: oldIndex)
-            print(" [VideoPlayerManager]: Removed preloaded asset for index \(oldIndex)")
-        }
-        
-        // Preload assets within the window, prioritizing the next video
-        let preloadOrder = prioritizedPreloadOrder(currentIndex: index, start: startIndex, end: endIndex)
-        
-        for i in preloadOrder {
-            // Skip if already preloaded
-            guard preloadedAssets[i] == nil else {
-                print(" [VideoPlayerManager]: Asset already preloaded for index \(i)")
-                continue
-            }
-            
-            // Skip if video URL is missing or invalid
-            guard let videoURL = videoViewModel.videos[i].url else {
-                print(" [VideoPlayerManager]: Invalid URL for video at index \(i)")
-                continue
-            }
-            
-            print(" [VideoPlayerManager]: Preloading asset for index \(i)")
-            let asset = AVURLAsset(url: videoURL)
-            
-            // Set resource loading priority
-            asset.resourceLoader.preloadsEligibleContentKeys = true
-            
-            do {
-                // Load properties using modern API
-                let _ = try await asset.load(.isPlayable)
-                let _ = try await asset.load(.duration)
-                let _ = try await asset.load(.tracks)
-                
-                // Create player item for next video to prepare it
-                if i == index + 1 {
-                    let playerItem = AVPlayerItem(asset: asset)
-                    playerItem.preferredForwardBufferDuration = 2.0
-                }
-                
-                preloadedAssets[i] = asset
-                print(" [VideoPlayerManager]: Successfully preloaded asset for index \(i)")
-            } catch {
-                print(" [VideoPlayerManager]: Failed to preload asset for index \(i): \(error)")
-            }
-        }
-        
-        print(" [VideoPlayerManager]: END Preloading adjacent videos")
-    }
-    
-    private func prioritizedPreloadOrder(currentIndex: Int, start: Int, end: Int) -> [Int] {
-        var order: [Int] = []
-        
-        // First priority: next video
-        if currentIndex + 1 <= end {
-            order.append(currentIndex + 1)
-        }
-        
-        // Second priority: previous video
-        if currentIndex - 1 >= start {
-            order.append(currentIndex - 1)
-        }
-        
-        // Third priority: remaining videos in window
-        for i in start...end {
-            if !order.contains(i) && i != currentIndex {
-                order.append(i)
-            }
-        }
-        
-        return order
+        return preloadUtility.getPreloadedAsset(for: index)
     }
     
     func unregister(index: Int) {
@@ -732,7 +659,7 @@ final class VideoPlayerManager: ObservableObject {
             
             // Preload adjacent videos
             Task {
-                await preloadAdjacentVideos(around: index)
+                await preloadUtility.preloadAdjacentVideos(around: index, videos: videos)
             }
         }
     }
@@ -753,7 +680,7 @@ final class VideoPlayerManager: ObservableObject {
         // Clear all collections
         timeObserverTokens.removeAll()
         players.removeAll()
-        preloadedAssets.removeAll()
+        preloadUtility.cleanup()
         currentIndex = nil
         
         print(" [VideoPlayerManager]: END Global cleanup")

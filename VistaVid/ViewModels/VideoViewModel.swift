@@ -241,14 +241,13 @@ final class VideoViewModel: ObservableObject {
                 return nil
             }
             
-            // Add the document ID to the user data before decoding
+            // Add the userId as the document ID
             var userDataWithId = userData
-            userDataWithId["id"] = userDoc.documentID
+            userDataWithId["userId"] = userDoc.documentID
             
             let user = try Firestore.Decoder().decode(User.self, from: userDataWithId)
             debugLog("✅ Successfully fetched user data for video")
             return user
-            
         } catch {
             debugLog("❌ Error fetching user data: \(error)")
             return nil
