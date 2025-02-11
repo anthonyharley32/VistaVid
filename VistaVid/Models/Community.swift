@@ -1,7 +1,7 @@
 import Foundation
 import FirebaseFirestore
 
-struct Community: Identifiable, Codable {
+struct Community: Identifiable, Codable, Equatable {
     // MARK: - Properties
     let id: String
     let name: String
@@ -214,5 +214,12 @@ extension Community {
         
         print("📦 [Community] Dictionary data: \(data)")
         return data
+    }
+}
+
+// MARK: - Equatable
+extension Community {
+    static func == (lhs: Community, rhs: Community) -> Bool {
+        lhs.id == rhs.id
     }
 } 

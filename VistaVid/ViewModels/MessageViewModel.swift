@@ -135,13 +135,23 @@ import FirebaseAuth
             .setData(message.toDictionary())
         
         // Update thread metadata
+        // Update thread metadata with properly formatted data
+        let threadUpdateData: [String: Any] = [
+            "lastMessage": [
+                "id": message.id,
+                "senderId": message.senderId,
+                "recipientId": message.recipientId,
+                "content": message.content,
+                "createdAt": Timestamp(date: message.createdAt),
+                "isRead": message.isRead
+            ],
+            "lastActivityAt": Timestamp(date: Date()),
+            "unreadCount": FieldValue.increment(Int64(1))
+        ]
+        
         try await db.collection("chatThreads")
             .document(actualThreadId)
-            .updateData([
-                "lastMessage": message.toDictionary(),
-                "lastActivityAt": Timestamp(date: Date()),
-                "unreadCount": FieldValue.increment(Int64(1))
-            ])
+            .updateData(threadUpdateData)
         
         print("✅ Successfully sent message to user: \(recipientId)")
     }

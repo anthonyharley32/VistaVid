@@ -1,56 +1,13 @@
 ### TODO
 
 #Week 6
-[ ] settings clean up
-[ ] Feed navigation
-[ ] Community page
-[ ] Views
-[ ] Algorithm Accountability
+[ ] settings clean up - UI is a little weird and there's a lot of bricked links on there like the privacy policy.
+[ ] Feed navigation is buggy - fast scrolling causesaudio to track the wrong video and video to play when another tab is pressed.
+[ ] Community page shows blank on long press
+[ ] Record and display Views
+[ ] Algorithm Accountability - currently just UI on settings. Improve UI/UX and implement funcitonality.
 [ ] Content Moderation
-[ ] Content loading
+[ ] Content loading - feed takes 2s to laod every video
+[ ] segmentation fault race condition - happens sproadically on app initializations
 [X] Hands Free Mode
 [X] play/pause button
-
-
-###COMPLETEDUSER STORIES
-1.  Upload a video 
-2.  View, like, comment on a video
-3.  Edit profile 
-4.  View a user's profileh
-5.  Follow a user
-6.  Search for a user
-7.  DM a user
-8.  See liked posts
-9.  Make community 
-and posts
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-#Week 6
-
-[ ] 
-
-
-
-
-
-
-BUGS

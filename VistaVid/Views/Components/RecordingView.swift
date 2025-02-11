@@ -55,18 +55,8 @@ struct RecordingView: View {
                                     .foregroundColor(.white)
                                     .frame(width: 44, height: 44) // Larger touch target
                             }
-                            
-                            Button(action: {
-                                print("🎥 [RecordingView]: Switch camera button tapped")
-                                cameraManager.flipCamera()
-                            }) {
-                                Image(systemName: "camera.rotate")
-                                    .font(.system(size: 24, weight: .semibold))
-                                    .foregroundColor(.white)
-                                    .frame(width: 44, height: 44) // Larger touch target
-                            }
                         }
-                        .position(x: 100, y: 60) // Adjusted position to accommodate both buttons
+                        .position(x: 50, y: 60) // Adjusted position for single button
                     }
                     Spacer()
                     
@@ -78,25 +68,43 @@ struct RecordingView: View {
                                 .foregroundColor(.white)
                         }
                         
-                        // Record button
-                        Button(action: {
-                            if cameraManager.isRecording {
-                                Task {
-                                    cameraManager.stopRecording()
-                                    showingDescriptionSheet = true
-                                }
-                            } else {
-                                cameraManager.startRecording()
+                        // Camera controls row
+                        HStack(spacing: 40) {
+                            // Switch camera button
+                            Button(action: {
+                                print("🎥 [RecordingView]: Switch camera button tapped")
+                                cameraManager.flipCamera()
+                            }) {
+                                Image(systemName: "camera.rotate")
+                                    .font(.system(size: 24, weight: .semibold))
+                                    .foregroundColor(.white)
+                                    .frame(width: 44, height: 44)
                             }
-                        }) {
-                            Circle()
-                                .fill(cameraManager.isRecording ? Color.red : Color.white)
-                                .frame(width: 80, height: 80)
-                                .overlay(
-                                    Circle()
-                                        .stroke(Color.white, lineWidth: 4)
-                                        .frame(width: 70, height: 70)
-                                )
+                            
+                            // Record button
+                            Button(action: {
+                                if cameraManager.isRecording {
+                                    Task {
+                                        cameraManager.stopRecording()
+                                        showingDescriptionSheet = true
+                                    }
+                                } else {
+                                    cameraManager.startRecording()
+                                }
+                            }) {
+                                Circle()
+                                    .fill(cameraManager.isRecording ? Color.red : Color.white)
+                                    .frame(width: 80, height: 80)
+                                    .overlay(
+                                        Circle()
+                                            .stroke(Color.white, lineWidth: 4)
+                                            .frame(width: 70, height: 70)
+                                    )
+                            }
+                            
+                            // Empty spacer view to balance the layout
+                            Color.clear
+                                .frame(width: 44, height: 44)
                         }
                     }
                     .padding(.bottom, 30)

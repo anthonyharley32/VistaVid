@@ -629,9 +629,12 @@ struct CommunitiesView: View {
         ScrollView {
             LazyVStack(spacing: 12) {
                 ForEach(model.communities) { community in
-                    Button {
-                        // Navigation action
-                    } label: {
+                    ZStack {
+                        NavigationLink(destination: CommunityFeedView(community: community)) {
+                            EmptyView()
+                        }
+                        .opacity(0)
+                        
                         HStack(spacing: 12) {
                             if community.iconType == "emoji" {
                                 Text(community.displayIcon)
@@ -662,27 +665,20 @@ struct CommunitiesView: View {
                             Spacer()
                         }
                         .padding(.horizontal)
-                    }
-                    .simultaneousGesture(
-                        LongPressGesture(minimumDuration: 0.5)
-                            .onEnded { _ in
-                                selectedCommunity = community
-                                showingCommunityDetail = true
-                            }
-                    )
-                    .highPriorityGesture(
-                        TapGesture()
-                            .onEnded {
-                                // Navigate to CommunityFeedView
-                                // This will be handled by NavigationLink
-                            }
-                    )
-                    .background(
-                        NavigationLink(destination: CommunityFeedView(community: community)) {
-                            EmptyView()
+                        .contentShape(Rectangle())
+                        .onTapGesture {
+                            print("📱 [CommunitiesView]: Tapped community: \(community.name)")
                         }
-                        .opacity(0)
-                    )
+                        .simultaneousGesture(
+                            LongPressGesture(minimumDuration: 0.5)
+                                .onEnded { _ in
+                                    print("📱 [CommunitiesView]: Long press detected on community: \(community.name)")
+                                    selectedCommunity = community
+                                    showingCommunityDetail = true
+                                }
+                        )
+                    }
+                    .buttonStyle(.plain)
                 }
             }
             .padding(.vertical)

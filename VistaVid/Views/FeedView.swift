@@ -662,6 +662,12 @@ final class VideoPlayerManager: ObservableObject {
     
     func updateVideos(_ newVideos: [Video]) {
         videos = newVideos
+        // Trigger preloading for current video if exists
+        if let currentIdx = currentIndex {
+            Task {
+                await preloadUtility.preloadAdjacentVideos(around: currentIdx, videos: videos)
+            }
+        }
     }
     
     func getPlayer(for index: Int) -> AVQueuePlayer? {
@@ -703,9 +709,14 @@ final class VideoPlayerManager: ObservableObject {
         timeObserverTokens[index] = timeObserver
         currentIndex = index
         
-        // Preload adjacent videos
-        Task {
-            await preloadUtility.preloadAdjacentVideos(around: index, videos: videos)
+        // Ensure videos array is not empty before preloading
+        if !videos.isEmpty {
+            // Preload adjacent videos
+            Task {
+                await preloadUtility.preloadAdjacentVideos(around: index, videos: videos)
+            }
+        } else {
+            print(" [VideoPlayerManager]: Cannot preload videos - videos array is empty")
         }
     }
     
