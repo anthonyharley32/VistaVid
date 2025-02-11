@@ -104,7 +104,7 @@ struct SettingsView: View {
                     Label {
                         VStack(alignment: .leading) {
                             Text("Hands-Free Mode")
-                            Text("Navigate videos using eye blinks")
+                            Text("Control videos using eye gestures")
                                 .font(.caption)
                                 .foregroundColor(.secondary)
                         }
@@ -118,7 +118,7 @@ struct SettingsView: View {
                     .foregroundColor(.primary)
                     .font(.headline)
             } footer: {
-                Text("Single blink to go to next video, double blink to go to previous video")
+                Text("Left wink: previous video\nBoth eyes blink: play/pause\nRight wink: next video")
             }
             
             // Support & Legal

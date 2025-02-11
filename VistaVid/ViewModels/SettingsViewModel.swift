@@ -6,13 +6,26 @@ import Foundation
     private let handsFreeModeKey = "handsFreeMode"
     
     var isHandsFreeEnabled: Bool {
-        get { defaults.bool(forKey: handsFreeModeKey) }
+        get { 
+            let enabled = defaults.bool(forKey: handsFreeModeKey)
+            print("👁️ Hands-free mode is: \(enabled ? "ON" : "OFF")")
+            return enabled 
+        }
         set { 
+            print("👁️ Setting hands-free mode to: \(newValue ? "ON" : "OFF")")
             defaults.set(newValue, forKey: handsFreeModeKey)
-            if newValue {
-                blinkManager.startDetection()
-            } else {
-                blinkManager.stopDetection()
+            
+            // Ensure we're on the main thread for UI updates
+            DispatchQueue.main.async {
+                if newValue {
+                    print("👁️ Starting blink detection")
+                    self.blinkManager.startDetection()
+                } else {
+                    print("👁️ Stopping blink detection")
+                    self.blinkManager.stopDetection()
+                    // Reset any ongoing gesture processing
+                    self.blinkManager.isRunning = false
+                }
             }
         }
     }
@@ -21,19 +34,37 @@ import Foundation
     let blinkManager = BlinkDetectionManager()
     
     init() {
-        // Setup blink detection callbacks
-        blinkManager.onSingleBlink = {
-            print("👁️ Single blink detected - Navigating to next video")
-            NotificationCenter.default.post(name: NSNotification.Name("NavigateToNextVideo"), object: nil)
+        // Setup gesture detection callbacks
+        blinkManager.onLeftWink = {
+            print("👁️ Left wink detected - Going to previous video")
+            NotificationCenter.default.post(
+                name: NSNotification.Name("NavigateToPreviousVideo"),
+                object: nil,
+                userInfo: ["direction": "up"]
+            )
         }
         
-        blinkManager.onDoubleBlink = {
-            print("👁️ Double blink detected - Navigating to previous video")
-            NotificationCenter.default.post(name: NSNotification.Name("NavigateToPreviousVideo"), object: nil)
+        blinkManager.onRightWink = {
+            print("👁️ Right wink detected - Going to next video")
+            NotificationCenter.default.post(
+                name: NSNotification.Name("NavigateToNextVideo"),
+                object: nil,
+                userInfo: ["direction": "down"]
+            )
         }
         
-        // Start detection if enabled
-        if isHandsFreeEnabled {
+        blinkManager.onBothEyesBlink = {
+            print("👁️ Both eyes blink detected - Toggling play/pause")
+            NotificationCenter.default.post(
+                name: NSNotification.Name("TogglePlayback"),
+                object: nil,
+                userInfo: nil
+            )
+        }
+        
+        // Start detection if enabled, but only if not already running
+        if isHandsFreeEnabled && !blinkManager.isRunning {
+            print("👁️ Initializing blink detection on startup")
             blinkManager.startDetection()
         }
     }

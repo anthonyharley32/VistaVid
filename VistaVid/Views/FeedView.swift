@@ -60,6 +60,7 @@ struct FeedView: View {
     @State private var selectedUser: User?
     @State private var currentlyPlayingVideo: String? = nil
     @State private var isPaused = false
+    @Namespace private var scrollSpace
     
     init(authModel: AuthenticationViewModel) {
         self.authModel = authModel
@@ -76,41 +77,47 @@ struct FeedView: View {
                         systemImage: "video.slash",
                         description: Text("Be the first to post!"))
                 } else {
-                    ScrollView(.vertical, showsIndicators: false) {
-                        LazyVStack(spacing: 0) {
-                            ForEach(Array(videoViewModel.videos.enumerated()), id: \.element.id) { (index: Int, video: Video) in
-                                VideoPlayerView(
-                                    video: video,
-                                    index: index,
-                                    videoManager: videoManager,
-                                    isVisible: visibleIndex == index,
-                                    onUserTap: { handleUserTap(video: video) }
-                                )
-                                .frame(width: geometry.size.width, height: geometry.size.height)
-                                .onAppear {
-                                    print(" [FeedView]: Video \(index) appeared")
-                                    if currentIndex == nil {
-                                        currentIndex = index
-                                        visibleIndex = index
+                    ScrollViewReader { proxy in
+                        ScrollView(.vertical, showsIndicators: false) {
+                            LazyVStack(spacing: 0) {
+                                ForEach(Array(videoViewModel.videos.enumerated()), id: \.element.id) { (index: Int, video: Video) in
+                                    VideoPlayerView(
+                                        video: video,
+                                        index: index,
+                                        videoManager: videoManager,
+                                        isVisible: visibleIndex == index,
+                                        onUserTap: { handleUserTap(video: video) }
+                                    )
+                                    .frame(width: geometry.size.width, height: geometry.size.height)
+                                    .id(index)
+                                    .onAppear {
+                                        print("📱 [FeedView]: Video \(index) appeared")
+                                        if currentIndex == nil {
+                                            currentIndex = index
+                                            visibleIndex = index
+                                        }
                                     }
-                                }
-                                .modifier(VisibilityModifier(index: index, currentVisibleIndex: $visibleIndex))
-                                .onDisappear {
-                                    print(" [FeedView]: Video \(index) disappeared")
+                                    .modifier(VisibilityModifier(index: index, currentVisibleIndex: $visibleIndex))
+                                    .onDisappear {
+                                        print("📱 [FeedView]: Video \(index) disappeared")
+                                    }
                                 }
                             }
                         }
-                    }
-                    .scrollTargetBehavior(.paging)
-                    .scrollPosition(id: $currentIndex)
-                    .onChange(of: videoViewModel.videos) { _, newVideos in
-                        print("📱 [FeedView]: Updating videos array with \(newVideos.count) videos")
-                        videoManager.updateVideos(newVideos)
-                    }
-                    .onChange(of: visibleIndex) { oldValue, newValue in
-                        print("📱 [FeedView]: Visibility changed from \(String(describing: oldValue)) to \(String(describing: newValue))")
-                        if let index = newValue {
-                            videoManager.pauseAllExcept(index: index)
+                        .scrollTargetBehavior(.paging)
+                        .scrollPosition(id: $currentIndex)
+                        .onChange(of: videoViewModel.videos) { _, newVideos in
+                            print("📱 [FeedView]: Updating videos array with \(newVideos.count) videos")
+                            videoManager.updateVideos(newVideos)
+                        }
+                        .onChange(of: visibleIndex) { oldValue, newValue in
+                            print("📱 [FeedView]: Visibility changed from \(String(describing: oldValue)) to \(String(describing: newValue))")
+                            if let index = newValue {
+                                videoManager.pauseAllExcept(index: index)
+                            }
+                        }
+                        .onAppear {
+                            setupNotificationObservers(proxy: proxy)
                         }
                     }
                 }
@@ -120,7 +127,6 @@ struct FeedView: View {
             .statusBar(hidden: true)
             .onAppear {
                 print("📱 [FeedView]: View appeared, loading videos")
-                setupNotificationObservers()
                 Task {
                     await videoViewModel.loadVideos()
                 }
@@ -132,7 +138,7 @@ struct FeedView: View {
         .environment(\.videoViewModel, videoViewModel)
     }
     
-    private func setupNotificationObservers() {
+    private func setupNotificationObservers(proxy: ScrollViewProxy) {
         // Add observers for blink navigation
         NotificationCenter.default.addObserver(
             forName: NSNotification.Name("NavigateToNextVideo"),
@@ -142,9 +148,20 @@ struct FeedView: View {
             Task { @MainActor in
                 guard let currentIndex = visibleIndex else { return }
                 let nextIndex = min(currentIndex + 1, videoViewModel.videos.count - 1)
-                withAnimation {
+                
+                // Perform artificial scroll with animation
+                withAnimation(.spring(duration: 0.5)) {
+                    proxy.scrollTo(nextIndex, anchor: .center)
                     self.currentIndex = nextIndex
                     self.visibleIndex = nextIndex
+                }
+                
+                // Ensure video plays after scrolling
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.6) {
+                    if let player = self.videoManager.getPlayer(for: nextIndex) {
+                        player.seek(to: .zero)
+                        player.play()
+                    }
                 }
             }
         }
@@ -157,9 +174,20 @@ struct FeedView: View {
             Task { @MainActor in
                 guard let currentIndex = visibleIndex else { return }
                 let previousIndex = max(currentIndex - 1, 0)
-                withAnimation {
+                
+                // Perform artificial scroll with animation
+                withAnimation(.spring(duration: 0.5)) {
+                    proxy.scrollTo(previousIndex, anchor: .center)
                     self.currentIndex = previousIndex
                     self.visibleIndex = previousIndex
+                }
+                
+                // Ensure video plays after scrolling
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.6) {
+                    if let player = self.videoManager.getPlayer(for: previousIndex) {
+                        player.seek(to: .zero)
+                        player.play()
+                    }
                 }
             }
         }
@@ -469,12 +497,13 @@ struct VideoPlayerView: View {
             CommentsView(video: video)
         }
         .onReceive(NotificationCenter.default.publisher(for: NSNotification.Name("TogglePlayback"))) { notification in
-            if let videoId = notification.userInfo?["videoId"] as? String,
-               videoId == video.id {
-                if player?.timeControlStatus == .playing {
-                    player?.pause()
+            if let player = player {
+                if player.timeControlStatus == .playing {
+                    player.pause()
+                    isPlaying = false
                 } else {
-                    player?.play()
+                    player.play()
+                    isPlaying = true
                 }
             }
         }
@@ -633,6 +662,10 @@ final class VideoPlayerManager: ObservableObject {
     
     func updateVideos(_ newVideos: [Video]) {
         videos = newVideos
+    }
+    
+    func getPlayer(for index: Int) -> AVQueuePlayer? {
+        return players[index]
     }
     
     func register(player: AVQueuePlayer, for index: Int) {
