@@ -39,22 +39,34 @@ struct RecordingView: View {
                 // Close button
                 VStack {
                     GeometryReader { geo in
-                        Button(action: {
-                            print("🎥 [RecordingView]: Close button tapped")
-                            // First dismiss the view
-                            dismiss()
-                            // Then cleanup camera
-                            Task { @MainActor in
-                                print("🎥 [RecordingView]: Starting camera cleanup after dismiss")
-                                await cameraManager.cleanupCamera()
+                        HStack(spacing: 20) {
+                            Button(action: {
+                                print("🎥 [RecordingView]: Close button tapped")
+                                // First dismiss the view
+                                dismiss()
+                                // Then cleanup camera
+                                Task { @MainActor in
+                                    print("🎥 [RecordingView]: Starting camera cleanup after dismiss")
+                                    await cameraManager.cleanupCamera()
+                                }
+                            }) {
+                                Image(systemName: "xmark")
+                                    .font(.system(size: 24, weight: .semibold))
+                                    .foregroundColor(.white)
+                                    .frame(width: 44, height: 44) // Larger touch target
                             }
-                        }) {
-                            Image(systemName: "xmark")
-                                .font(.system(size: 24, weight: .semibold))
-                                .foregroundColor(.white)
-                                .frame(width: 44, height: 44) // Larger touch target
+                            
+                            Button(action: {
+                                print("🎥 [RecordingView]: Switch camera button tapped")
+                                cameraManager.flipCamera()
+                            }) {
+                                Image(systemName: "camera.rotate")
+                                    .font(.system(size: 24, weight: .semibold))
+                                    .foregroundColor(.white)
+                                    .frame(width: 44, height: 44) // Larger touch target
+                            }
                         }
-                        .position(x: 60, y: 60) // Position from top-left corner without safe area
+                        .position(x: 100, y: 60) // Adjusted position to accommodate both buttons
                     }
                     Spacer()
                     

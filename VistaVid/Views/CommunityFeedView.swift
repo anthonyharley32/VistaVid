@@ -62,12 +62,10 @@ struct CommunityFeedView: View {
                 .scrollPosition(id: $currentIndex)
                 .onChange(of: visibleIndex) { oldValue, newValue in
                     print("📱 [CommunityFeedView]: Visible index changed from \(String(describing: oldValue)) to \(String(describing: newValue))")
-                    Task {
-                        if let index = newValue {
-                            await videoManager.pauseAllExcept(index: index)
-                        } else {
-                            videoManager.cleanup()
-                        }
+                    if let index = newValue {
+                        videoManager.pauseAllExcept(index: index)
+                    } else {
+                        videoManager.cleanup()
                     }
                 }
                 .onDisappear {

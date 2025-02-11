@@ -267,23 +267,41 @@ struct VideoPlayerView: View {
                 }
                 
                 if let player = player, isVisible, isVideoReady {
-                    CustomVideoPlayer(player: player)
-                        .frame(width: geometry.size.width, height: UIScreen.main.bounds.height)
-                        .clipped()
-                        .onAppear {
-                            print(" [VideoPlayerView \(index)]: Player view appeared, isVisible: \(isVisible)")
+                    ZStack {
+                        CustomVideoPlayer(player: player)
+                            .frame(width: geometry.size.width, height: UIScreen.main.bounds.height)
+                            .clipped()
+                            .onAppear {
+                                print(" [VideoPlayerView \(index)]: Player view appeared, isVisible: \(isVisible)")
+                            }
+                            .onDisappear {
+                                print(" [VideoPlayerView \(index)]: Player view disappeared")
+                                cleanupPlayer()
+                            }
+                        
+                        // Tap gesture area for play/pause
+                        GeometryReader { tapGeometry in
+                            Color.clear
+                                .contentShape(Rectangle())
+                                .onTapGesture { location in
+                                    print("🎯 [VideoPlayerView]: Tap detected at \(location)")
+                                    
+                                    // Calculate safe area for taps
+                                    let height = tapGeometry.size.height
+                                    let width = tapGeometry.size.width
+                                    let tabBarHeight: CGFloat = 100 // Increased to account for bottom content
+                                    let rightControlsWidth: CGFloat = 100 // Increased to ensure we don't interfere with buttons
+                                    
+                                    // Check if tap is in the safe area
+                                    if location.y < (height - tabBarHeight) && location.x < (width - rightControlsWidth) {
+                                        print("🎯 [VideoPlayerView]: Tap in safe area - toggling playback")
+                                        handlePlayPause()
+                                    } else {
+                                        print("🎯 [VideoPlayerView]: Tap outside safe area - ignoring")
+                                    }
+                                }
                         }
-                        .onDisappear {
-                            print(" [VideoPlayerView \(index)]: Player view disappeared")
-                            cleanupPlayer()
-                        }
-                }
-                
-                // Playback indicator
-                if showPlaybackIndicator {
-                    Image(systemName: isPlaying ? "pause.circle.fill" : "play.circle.fill")
-                        .font(.system(size: 72))
-                        .foregroundColor(.white.opacity(0.8))
+                    }
                 }
                 
                 // Video Info Overlay
@@ -465,32 +483,22 @@ struct VideoPlayerView: View {
     private func initializePlayerIfNeeded() async {
         print(" [VideoPlayerView \(index)]: START Initializing player")
         guard player == nil,
-              let videoURL = video.url else { // Use the computed url property from Video model
+              let videoURL = video.url else {
             print(" [VideoPlayerView \(index)]: Player already exists or invalid URL")
             return
         }
         
         // Load thumbnails concurrently
-        await withTaskGroup(of: Void.self) { group in
-            // Current thumbnail
-            if thumbnail == nil {
-                group.addTask {
-                    if let newThumbnail = await thumbnailManager.thumbnail(for: videoURL) {
-                        await MainActor.run {
-                            self.thumbnail = newThumbnail
-                        }
-                    }
-                }
+        if thumbnail == nil {
+            thumbnail = await ThumbnailManager.shared.thumbnail(for: video)
+        }
+        
+        // Preload next thumbnail
+        if index + 1 < videoViewModel.videos.count {
+            let nextVideo = videoViewModel.videos[index + 1]
+            Task {
+                _ = await ThumbnailManager.shared.thumbnail(for: nextVideo)
             }
-            
-            // Preload next thumbnail
-            if index + 1 < videoViewModel.videos.count,
-               let nextURL = videoViewModel.videos[index + 1].url {
-                group.addTask {
-                    _ = await thumbnailManager.thumbnail(for: nextURL)
-                }
-            }
-            await group.waitForAll()
         }
         
         isLoading = true
@@ -576,18 +584,6 @@ struct VideoPlayerView: View {
             player.play()
         } else {
             player.pause()
-        }
-        
-        // Show indicator with animation
-        withAnimation {
-            showPlaybackIndicator = true
-        }
-        
-        // Hide indicator after delay
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
-            withAnimation {
-                showPlaybackIndicator = false
-            }
         }
         
         print(" [VideoPlayerView]: Video playback toggled to \(isPlaying ? "playing" : "paused")")

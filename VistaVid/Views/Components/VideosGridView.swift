@@ -14,35 +14,37 @@ struct VideosGridView: View {
                 VideoThumbnailView(video: video)
             }
         }
+        .task {
+            // Preload thumbnails for all videos in the grid
+            await ThumbnailManager.shared.preloadThumbnails(for: videos)
+        }
     }
 }
 
 struct VideoThumbnailView: View {
     let video: Video
+    @State private var thumbnail: UIImage?
     
     var body: some View {
-        // Placeholder for video thumbnail
         ZStack {
-            Rectangle()
-                .fill(Color.gray.opacity(0.3))
-                .aspectRatio(9/16, contentMode: .fit)
-            
-            VStack {
-                if let thumbnailUrl = video.thumbnailUrl {
-                    AsyncImage(url: URL(string: thumbnailUrl)) { image in
-                        image
-                            .resizable()
-                            .aspectRatio(contentMode: .fill)
-                    } placeholder: {
+            if let thumbnail = thumbnail {
+                Image(uiImage: thumbnail)
+                    .resizable()
+                    .aspectRatio(9/16, contentMode: .fill)
+                    .clipped()
+            } else {
+                Rectangle()
+                    .fill(Color.gray.opacity(0.3))
+                    .aspectRatio(9/16, contentMode: .fit)
+                    .overlay {
                         ProgressView()
+                            .tint(.white)
                     }
-                } else {
-                    Image(systemName: "play.rectangle")
-                        .font(.largeTitle)
-                        .foregroundColor(.gray)
-                }
             }
         }
         .cornerRadius(8)
+        .task {
+            thumbnail = await ThumbnailManager.shared.thumbnail(for: video)
+        }
     }
 }
