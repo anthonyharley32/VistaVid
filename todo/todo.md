@@ -2,13 +2,14 @@
 
 #Week 6
 [ ] settings clean up
+[ ] Feed navigation
 [ ] Community page
+[ ] Views
 [ ] Algorithm Accountability
-[ ] Content
-[ ] Hands Free Mode
 [ ] Content Moderation
-[ ] AI-enhanced Search
-[ ] play/pause button
+[ ] Content loading
+[X] Hands Free Mode
+[X] play/pause button
 
 
 ###COMPLETEDUSER STORIES
