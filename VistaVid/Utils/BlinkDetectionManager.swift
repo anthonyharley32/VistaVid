@@ -189,29 +189,39 @@ import Combine
         // Debug logging for eye ratios
         print("👁️ Left EAR: \(leftEAR), Right EAR: \(rightEAR)")
         
-        // Calculate the ratio between eyes
-        let earDifferenceThreshold: Float = 0.15 // Increased from 0.10 to 0.15 for more distinct winks
+        // Constants for detection
+        let blinkThreshold: Float = 0.04
+        let winkThreshold: Float = 0.10
+        let normalStateThreshold: Float = 0.20
+        let eyeRatioDifferenceMax: Float = 0.85
+        let blinkEyeDifferenceMax: Float = 0.03
+        
+        // Calculate ratios between eyes
         let leftToRightRatio = leftEAR / rightEAR
         let rightToLeftRatio = rightEAR / leftEAR
         
         // Track eye states
-        let isLeftEyeOpen = leftEAR > 0.2
-        let isRightEyeOpen = rightEAR > 0.2
+        let isLeftEyeOpen = leftEAR > normalStateThreshold
+        let isRightEyeOpen = rightEAR > normalStateThreshold
         
-        // Detect gestures with ratio-based logic and state tracking
-        if leftEAR < 0.08 && rightEAR < 0.08 && (leftEyeWasOpen || rightEyeWasOpen) {
-            // Both eyes blink detected (at least one eye must have been open before)
+        // Detect gestures with optimized parameters
+        if leftEAR < blinkThreshold && rightEAR < blinkThreshold && 
+           abs(leftEAR - rightEAR) < blinkEyeDifferenceMax &&
+           (leftEyeWasOpen || rightEyeWasOpen) {
+            // Both eyes blink detected
             print("👁️ Blink detected - L:\(leftEAR) R:\(rightEAR)")
             handleGesture(type: .bothEyes)
             leftEyeWasOpen = false
             rightEyeWasOpen = false
-        } else if leftToRightRatio < (1.0 - earDifferenceThreshold) && (leftEAR < rightEAR) {
-            // Left wink detected (eye must have been open before)
+        } else if leftEAR < winkThreshold && rightEAR > winkThreshold && 
+                  leftToRightRatio < eyeRatioDifferenceMax && leftEyeWasOpen {
+            // Left wink detected
             print("👁️ Left wink detected - Ratio L/R: \(leftToRightRatio)")
             handleGesture(type: .leftWink)
             leftEyeWasOpen = false
-        } else if rightToLeftRatio < (1.0 - earDifferenceThreshold) && (leftEAR > rightEAR) {
-            // Right wink detected (eye must have been open before)
+        } else if rightEAR < winkThreshold && leftEAR > winkThreshold && 
+                  rightToLeftRatio < eyeRatioDifferenceMax && rightEyeWasOpen {
+            // Right wink detected
             print("👁️ Right wink detected - Ratio R/L: \(rightToLeftRatio)")
             handleGesture(type: .rightWink)
             rightEyeWasOpen = false

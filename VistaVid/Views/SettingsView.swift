@@ -2,7 +2,7 @@ import SwiftUI
 
 struct SettingsView: View {
     let model: AuthenticationViewModel
-    let settingsModel = SettingsViewModel()
+    let settingsModel: SettingsViewModel = .shared
     @Environment(\.dismiss) private var dismiss
     @State private var showingAlert = false
     @State private var alertMessage = ""
