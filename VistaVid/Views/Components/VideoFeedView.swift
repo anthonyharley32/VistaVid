@@ -104,99 +104,101 @@ struct VideoFeedView: View {
     }
     
     var body: some View {
-        ZStack {
-            Color.black.ignoresSafeArea()
-            
-            GeometryReader { geometry in
-                ZStack {
-                    // Videos
-                    ForEach(Array(viewModel.videos.enumerated()), id: \.element.id) { index, video in
-                        if shouldRenderVideo(at: index) {
-                            VideoCardContainer(
-                                video: video,
-                                index: index,
-                                currentIndex: viewModel.currentIndex,
-                                dragOffset: dragOffset,
-                                onDoubleTap: { position in
-                                    viewModel.createHeart(at: position)
-                                },
-                                isPlaying: viewModel.isPlaying,
-                                onProfileTap: navigateToProfile
-                            )
-                        }
-                    }
-                    
-                    // Hearts
-                    ForEach(viewModel.hearts) { heart in
-                        Image(systemName: "heart.fill")
-                            .font(.system(size: 100))
-                            .foregroundStyle(
-                                LinearGradient(
-                                    colors: [.pink, .red],
-                                    startPoint: .topLeading,
-                                    endPoint: .bottomTrailing
+        NavigationStack {
+            ZStack {
+                Color.black.ignoresSafeArea()
+                
+                GeometryReader { geometry in
+                    ZStack {
+                        // Videos
+                        ForEach(Array(viewModel.videos.enumerated()), id: \.element.id) { index, video in
+                            if shouldRenderVideo(at: index) {
+                                VideoCardContainer(
+                                    video: video,
+                                    index: index,
+                                    currentIndex: viewModel.currentIndex,
+                                    dragOffset: dragOffset,
+                                    onDoubleTap: { position in
+                                        viewModel.createHeart(at: position)
+                                    },
+                                    isPlaying: viewModel.isPlaying,
+                                    onProfileTap: navigateToProfile
                                 )
-                            )
-                            .shadow(color: .black.opacity(0.3), radius: 8, x: 0, y: 4)
-                            .position(heart.position)
-                    }
-                }
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-                .clipped()
-                .transaction { transaction in
-                    transaction.animation = isAnimating ? 
-                        .interpolatingSpring(stiffness: 200, damping: 25) : nil
-                }
-                .gesture(createDragGesture(geometry: geometry))
-            }
-            .frame(maxHeight: .infinity)
-            .ignoresSafeArea()
-            
-            // Header
-            VStack {
-                HStack {
-                    Button(action: {
-                        if let onClose = onClose {
-                            onClose()
-                        } else {
-                            dismiss()
+                            }
                         }
-                    }) {
-                        Image(systemName: "xmark")
-                            .foregroundColor(.white)
-                            .font(.title2)
-                            .padding()
+                        
+                        // Hearts
+                        ForEach(viewModel.hearts) { heart in
+                            Image(systemName: "heart.fill")
+                                .font(.system(size: 100))
+                                .foregroundStyle(
+                                    LinearGradient(
+                                        colors: [.pink, .red],
+                                        startPoint: .topLeading,
+                                        endPoint: .bottomTrailing
+                                    )
+                                )
+                                .shadow(color: .black.opacity(0.3), radius: 8, x: 0, y: 4)
+                                .position(heart.position)
+                        }
                     }
-                    
-                    if !title.isEmpty {
-                        Text(title)
-                            .foregroundColor(.white)
-                            .font(.headline)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .clipped()
+                    .transaction { transaction in
+                        transaction.animation = isAnimating ? 
+                            .interpolatingSpring(stiffness: 200, damping: 25) : nil
                     }
-                    
+                    .gesture(createDragGesture(geometry: geometry))
+                }
+                .frame(maxHeight: .infinity)
+                .ignoresSafeArea()
+                
+                // Header
+                VStack {
+                    HStack {
+                        Button(action: {
+                            if let onClose = onClose {
+                                onClose()
+                            } else {
+                                dismiss()
+                            }
+                        }) {
+                            Image(systemName: "xmark")
+                                .foregroundColor(.white)
+                                .font(.title2)
+                                .padding()
+                        }
+                        
+                        if !title.isEmpty {
+                            Text(title)
+                                .foregroundColor(.white)
+                                .font(.headline)
+                        }
+                        
+                        Spacer()
+                    }
                     Spacer()
                 }
-                Spacer()
+                .zIndex(1)
             }
-            .zIndex(1)
-        }
-        .fullScreenCover(isPresented: $showUserProfile) {
-            if let userId = selectedUserId {
-                NavigationStack {
-                    UserProfileView(userId: userId)
-                        .onAppear {
-                            viewModel.isPlaying = false
-                        }
+            .fullScreenCover(isPresented: $showUserProfile) {
+                if let userId = selectedUserId {
+                    NavigationStack {
+                        UserProfileView(userId: userId)
+                            .onAppear {
+                                viewModel.isPlaying = false
+                            }
+                    }
                 }
             }
+            .onAppear {
+                viewModel.isPlaying = true
+            }
+            .onDisappear {
+                viewModel.isPlaying = false
+            }
+            .preferredColorScheme(.dark)
         }
-        .onAppear {
-            viewModel.isPlaying = true
-        }
-        .onDisappear {
-            viewModel.isPlaying = false
-        }
-        .preferredColorScheme(.dark)
     }
     
     private func shouldRenderVideo(at index: Int) -> Bool {

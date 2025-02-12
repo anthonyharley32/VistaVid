@@ -13,65 +13,67 @@ struct MainView: View {
     }
     
     var body: some View {
-        ZStack(alignment: .bottom) {
-            TabView(selection: $selectedTab) {
-                FYPView()
-                    .tabItem {
-                        Image(systemName: "house.fill")
-                        Text("Home")
-                    }
-                    .tag(0)
+        NavigationStack {
+            ZStack(alignment: .bottom) {
+                TabView(selection: $selectedTab) {
+                    FYPView()
+                        .tabItem {
+                            Image(systemName: "house.fill")
+                            Text("Home")
+                        }
+                        .tag(0)
+                    
+                    CommunitiesView(model: communitiesModel)
+                        .tabItem {
+                            Image(systemName: "person.3.fill")
+                            Text("Communities")
+                        }
+                        .tag(1)
+                    
+                    // Empty tab for camera button spacing
+                    Color.clear
+                        .tabItem {
+                            Text("")
+                        }
+                        .tag(2)
+                    
+                    InboxView()
+                        .tabItem {
+                            Image(systemName: "message.fill")
+                            Text("Inbox")
+                        }
+                        .tag(3)
+                    
+                    ProfileView(user: authModel.currentUser ?? User.placeholder, authModel: authModel)
+                        .tabItem {
+                            Image(systemName: "person.fill")
+                            Text("You")
+                        }
+                        .tag(4)
+                }
+                .tint(.primary)
+                .onReceive(NotificationCenter.default.publisher(for: NSNotification.Name("NavigateToYouTab"))) { _ in
+                    selectedTab = 4
+                }
                 
-                CommunitiesView(model: communitiesModel)
-                    .tabItem {
-                        Image(systemName: "person.3.fill")
-                        Text("Communities")
-                    }
-                    .tag(1)
-                
-                // Empty tab for camera button spacing
-                Color.clear
-                    .tabItem {
-                        Text("")
-                    }
-                    .tag(2)
-                
-                InboxView()
-                    .tabItem {
-                        Image(systemName: "message.fill")
-                        Text("Inbox")
-                    }
-                    .tag(3)
-                
-                ProfileView(user: authModel.currentUser ?? User.placeholder, authModel: authModel)
-                    .tabItem {
-                        Image(systemName: "person.fill")
-                        Text("You")
-                    }
-                    .tag(4)
+                // Floating record button
+                Button(action: {
+                    showingCamera = true
+                }) {
+                    Image(systemName: "plus.circle.fill")
+                        .font(.system(size: 44))
+                        .foregroundColor(.primary)
+                        .background(Color.white)
+                        .clipShape(Circle())
+                        .shadow(radius: 2)
+                }
+                .offset(y: -10) // Increased offset to have 70% of button overlay the tab bar
             }
-            .tint(.primary)
-            .onReceive(NotificationCenter.default.publisher(for: NSNotification.Name("NavigateToYouTab"))) { _ in
-                selectedTab = 4
+            .fullScreenCover(isPresented: $showingCamera) {
+                RecordingView(videoViewModel: videoViewModel)
             }
-            
-            // Floating record button
-            Button(action: {
-                showingCamera = true
-            }) {
-                Image(systemName: "plus.circle.fill")
-                    .font(.system(size: 44))
-                    .foregroundColor(.primary)
-                    .background(Color.white)
-                    .clipShape(Circle())
-                    .shadow(radius: 2)
-            }
-            .offset(y: -10) // Increased offset to have 70% of button overlay the tab bar
+            .ignoresSafeArea(.keyboard) // Prevent keyboard from pushing content up
         }
-        .fullScreenCover(isPresented: $showingCamera) {
-            RecordingView(videoViewModel: videoViewModel)
-        }
-        .ignoresSafeArea(.keyboard) // Prevent keyboard from pushing content up
     }
 }
 

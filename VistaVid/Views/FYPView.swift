@@ -163,95 +163,97 @@ struct FYPView: View {
     @StateObject private var viewModel = FYPViewModel()
     
     var body: some View {
-        GeometryReader { geometry in
-            ZStack {
-                // Video cards - only render videos in view window
-                ForEach(Array(viewModel.videos.enumerated()), id: \.element.id) { index, video in
-                    if shouldRenderVideo(at: index) {
-                        VideoCardView(
-                            video: video,
-                            isCurrentlyPlaying: Binding(
-                                get: { index == viewModel.currentIndex && viewModel.isPlaying },
-                                set: { newValue in
-                                    viewModel.isPlaying = newValue
-                                }
-                            ),
-                            onDoubleTap: { position in
-                                viewModel.createHeart(at: position)
-                            },
-                            onProfileTap: { _ in }
-                        )
-                        .frame(maxWidth: .infinity, maxHeight: .infinity)
-                        .animation(.easeInOut(duration: 0.25), value: viewModel.currentIndex)
-                        .offset(y: (CGFloat(index - viewModel.currentIndex) * geometry.size.height) + dragOffset)
-                    }
-                }
-                
-                // Hearts
-                ForEach(viewModel.hearts) { heart in
-                    Image(systemName: "heart.fill")
-                        .font(.system(size: 100))
-                        .foregroundStyle(
-                            LinearGradient(
-                                colors: [.pink, .red],
-                                startPoint: .topLeading,
-                                endPoint: .bottomTrailing
+        NavigationStack {
+            GeometryReader { geometry in
+                ZStack {
+                    // Video cards - only render videos in view window
+                    ForEach(Array(viewModel.videos.enumerated()), id: \.element.id) { index, video in
+                        if shouldRenderVideo(at: index) {
+                            VideoCardView(
+                                video: video,
+                                isCurrentlyPlaying: Binding(
+                                    get: { index == viewModel.currentIndex && viewModel.isPlaying },
+                                    set: { newValue in
+                                        viewModel.isPlaying = newValue
+                                    }
+                                ),
+                                onDoubleTap: { position in
+                                    viewModel.createHeart(at: position)
+                                },
+                                onProfileTap: { _ in }
                             )
-                        )
-                        .shadow(color: .black.opacity(0.3), radius: 8, x: 0, y: 4)
-                        .position(heart.position)
-                }
-                
-                // Loading and error states
-                if viewModel.isLoadingMore {
-                    VStack {
-                        Spacer()
-                        ProgressView()
-                            .tint(.white)
-                        Spacer().frame(height: 100)
-                    }
-                }
-                
-                if let error = viewModel.error {
-                    VStack {
-                        Text(error)
-                            .foregroundColor(.red)
-                            .padding()
-                            .background(.ultraThinMaterial)
-                            .cornerRadius(12)
-                            .padding()
-                        
-                        Button("Retry") {
-                            Task {
-                                await viewModel.loadInitialVideos()
-                            }
+                            .frame(maxWidth: .infinity, maxHeight: .infinity)
+                            .animation(.easeInOut(duration: 0.25), value: viewModel.currentIndex)
+                            .offset(y: (CGFloat(index - viewModel.currentIndex) * geometry.size.height) + dragOffset)
                         }
-                        .buttonStyle(.borderedProminent)
-                        .tint(.red)
                     }
-                    .zIndex(1)
+                    
+                    // Hearts
+                    ForEach(viewModel.hearts) { heart in
+                        Image(systemName: "heart.fill")
+                            .font(.system(size: 100))
+                            .foregroundStyle(
+                                LinearGradient(
+                                    colors: [.pink, .red],
+                                    startPoint: .topLeading,
+                                    endPoint: .bottomTrailing
+                                )
+                            )
+                            .shadow(color: .black.opacity(0.3), radius: 8, x: 0, y: 4)
+                            .position(heart.position)
+                    }
+                    
+                    // Loading and error states
+                    if viewModel.isLoadingMore {
+                        VStack {
+                            Spacer()
+                            ProgressView()
+                                .tint(.white)
+                            Spacer().frame(height: 100)
+                        }
+                    }
+                    
+                    if let error = viewModel.error {
+                        VStack {
+                            Text(error)
+                                .foregroundColor(.red)
+                                .padding()
+                                .background(.ultraThinMaterial)
+                                .cornerRadius(12)
+                                .padding()
+                            
+                            Button("Retry") {
+                                Task {
+                                    await viewModel.loadInitialVideos()
+                                }
+                            }
+                            .buttonStyle(.borderedProminent)
+                            .tint(.red)
+                        }
+                        .zIndex(1)
+                    }
                 }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .clipped()
+                .transaction { transaction in
+                    transaction.animation = isAnimating ? 
+                        .easeInOut(duration: 0.25) : nil
+                }
+                .gesture(createDragGesture(geometry: geometry))
+                .offset(y: -30)
             }
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
-            .clipped()
-            .transaction { transaction in
-                transaction.animation = isAnimating ? 
-                    .easeInOut(duration: 0.25) : nil
+            .ignoresSafeArea()
+            .preferredColorScheme(.dark)
+            .task {
+                print("🏠 [FYP] View appeared, starting initial load")
+                await viewModel.loadInitialVideos()
             }
-            .gesture(createDragGesture(geometry: geometry))
-            .offset(y: -30)
-        }
-        .ignoresSafeArea()
-        .preferredColorScheme(.dark)
-        .task {
-            print("🏠 [FYP] View appeared, starting initial load")
-            await viewModel.loadInitialVideos()
-        }
-        .onAppear {
-            print("🏠 [FYP] View appeared")
-        }
-        .onDisappear {
-            print("🏠 [FYP] View disappeared")
+            .onAppear {
+                print("🏠 [FYP] View appeared")
+            }
+            .onDisappear {
+                print("🏠 [FYP] View disappeared")
+            }
         }
     }
     

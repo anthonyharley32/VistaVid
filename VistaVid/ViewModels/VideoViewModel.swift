@@ -587,7 +587,7 @@ final class VideoViewModel: ObservableObject {
         do {
             // First try to get videos without ordering
             let query = db.collection("videos")
-                .whereField("userId", isEqualTo: userId)
+                .whereField("creatorId", isEqualTo: userId)
                 .whereField("status", isEqualTo: "processed")  // Only fetch processed videos
             
             let snapshot = try await query.getDocuments()
@@ -636,7 +636,7 @@ final class VideoViewModel: ObservableObject {
                 debugLog("⚠️ Missing index error - attempting to fetch without ordering")
                 // If index error, try without ordering
                 let query = db.collection("videos")
-                    .whereField("userId", isEqualTo: userId)
+                    .whereField("creatorId", isEqualTo: userId)
                     .whereField("status", isEqualTo: "processed")  // Only fetch processed videos
                 
                 let snapshot = try await query.getDocuments()
