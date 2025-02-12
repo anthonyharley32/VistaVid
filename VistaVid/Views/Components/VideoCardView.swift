@@ -12,7 +12,7 @@ struct VideoCardView: View {
             ZStack {
                 // Single Video Player with optimized layout
                 if let url = URL(string: video.videoUrl) {
-                    VideoPlayerView(url: url, shouldPlay: isCurrentlyPlaying)
+                    VideoPlayerView(url: url, shouldPlay: isCurrentlyPlaying, video: video)
                         .aspectRatio(contentMode: .fill)
                         .frame(width: geometry.size.width, height: geometry.size.height)
                         .clipped()
@@ -67,11 +67,11 @@ struct VideoCardView: View {
                         // Interaction buttons
                         VStack(spacing: 20) {
                             VStack(spacing: 4) {
-                                Image(systemName: "play.circle.fill")
+                                Image(systemName: "heart.fill")
                                     .font(.system(size: 24))
                                     .foregroundStyle(.white)
                                     .shadow(color: .black.opacity(0.3), radius: 8, x: 0, y: 4)
-                                Text("\(video.interactionCounts.views)")
+                                Text("\(video.interactionCounts.likes)")
                                     .font(.caption)
                                     .bold()
                             }

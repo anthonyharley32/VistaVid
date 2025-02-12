@@ -797,6 +797,32 @@ final class VideoViewModel: ObservableObject {
             throw error
         }
     }
+    
+    // MARK: - View Count Methods
+    func incrementViewCount(for video: Video) async throws {
+        debugLog("👁️ Incrementing view count for video: \(video.id)")
+        
+        let videoRef = db.collection("videos").document(video.id)
+        
+        do {
+            // Increment view count in Firestore
+            try await updateVideoData([
+                "interactionCounts.views": FieldValue.increment(Int64(1))
+            ], for: videoRef)
+            
+            // Update local video object
+            if let index = videos.firstIndex(where: { $0.id == video.id }) {
+                var updatedVideo = videos[index]
+                updatedVideo.interactionCounts.views += 1
+                videos[index] = updatedVideo
+            }
+            
+            debugLog("✅ Successfully incremented view count")
+        } catch {
+            debugLog("❌ Error incrementing view count: \(error)")
+            throw error
+        }
+    }
 }
 
 // MARK: - Array Extension

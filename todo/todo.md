@@ -1,7 +1,6 @@
 ### TODO
 
 #Week 6
-[ ] Profile page emoji + text clean up
 [ ] Redo likes
 [ ] Redo comments
 [ ] Redo shares
@@ -18,6 +17,7 @@
 [ ] Content Moderation
 [ ] segmentation fault race condition - happens sproadically on app initializations
 [-] Community page shows blank on long press
+[X] Profile page emoji + text clean up
 [X] Feed navigation is buggy - fast scrolling causesaudio to track the wrong video and video to play when another tab is pressed.
 [X] Content loading - feed takes 2s to laod every video
 [X] Hands Free Mode
