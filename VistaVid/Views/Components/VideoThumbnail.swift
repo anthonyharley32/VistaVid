@@ -32,7 +32,7 @@ struct VideoThumbnail: View {
                 VStack {
                     Spacer()
                     HStack {
-                        Image(systemName: "play.circle.fill")
+                        Image(systemName: "play.fill")
                             .font(.system(size: 16))
                             .foregroundStyle(.white.opacity(0.6))
                         if let video = video {

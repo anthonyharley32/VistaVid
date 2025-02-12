@@ -4,9 +4,14 @@ import AVKit
 struct VideoPlayerView: View {
     let url: URL
     let shouldPlay: Bool
+    let video: Video?
+    @StateObject private var videoModel = VideoViewModel()
     @State private var player: AVPlayer?
     @State private var showPlayButton = false
     @State private var isPlaying = true
+    @State private var hasTrackedView = false
+    @State private var isLoading = true
+    @State private var loadError: Error?
     
     // Configure cache size - 500MB for memory, 1GB for disk
     private static let cache: URLCache = {
@@ -15,19 +20,47 @@ struct VideoPlayerView: View {
         return URLCache(memoryCapacity: memoryCapacity, diskCapacity: diskCapacity)
     }()
     
-    private func loadVideoWithCache() -> AVPlayer {
-        // Create URL request
-        var request = URLRequest(url: url)
-        request.cachePolicy = .returnCacheDataElseLoad
+    private func loadVideoWithCache() async {
+        print("🎥 Loading video from URL: \(url)")
+        isLoading = true
         
-        // Create asset with caching configuration
-        let asset = AVURLAsset(url: url, options: [
-            "AVURLAssetOutOfBandMIMETypeKey": "video/mp4",
-            "AVURLAssetHTTPHeaderFieldsKey": ["Cache-Control": "max-age=86400"]
-        ])
-        
-        let playerItem = AVPlayerItem(asset: asset)
-        return AVPlayer(playerItem: playerItem)
+        do {
+            // Create URL request with caching
+            var request = URLRequest(url: url)
+            request.cachePolicy = .returnCacheDataElseLoad
+            
+            // Create asset with caching configuration
+            let asset = AVURLAsset(url: url, options: [
+                "AVURLAssetOutOfBandMIMETypeKey": "video/mp4",
+                "AVURLAssetHTTPHeaderFieldsKey": ["Cache-Control": "max-age=86400"]
+            ])
+            
+            // Load the asset's tracks asynchronously
+            _ = try await asset.load(.tracks)
+            
+            let playerItem = AVPlayerItem(asset: asset)
+            
+            // Create player on the main thread
+            await MainActor.run {
+                player = AVPlayer(playerItem: playerItem)
+                player?.actionAtItemEnd = .none
+                player?.isMuted = false
+                
+                if shouldPlay {
+                    player?.play()
+                }
+                
+                isLoading = false
+            }
+            
+            print("✅ Successfully loaded video")
+        } catch {
+            print("❌ Error loading video: \(error)")
+            await MainActor.run {
+                loadError = error
+                isLoading = false
+            }
+        }
     }
     
     private func formatFileSize(_ bytes: Int64) -> String {
@@ -67,31 +100,59 @@ struct VideoPlayerView: View {
     var body: some View {
         ZStack {
             Color.black
-            CustomVideoPlayer(player: player)
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-                .edgesIgnoringSafeArea(.all)
             
-            if showPlayButton || !isPlaying {
-                Image(systemName: isPlaying ? "pause.fill" : "play.fill")
-                    .font(.system(size: 50))
-                    .foregroundStyle(.white.opacity(0.8))
-                    .transition(.opacity)
+            if isLoading {
+                ProgressView()
+                    .tint(.white)
+            } else if let error = loadError {
+                VStack(spacing: 12) {
+                    Image(systemName: "exclamationmark.triangle.fill")
+                        .font(.system(size: 40))
+                        .foregroundStyle(.red)
+                    Text("Failed to load video")
+                        .font(.headline)
+                    Text(error.localizedDescription)
+                        .font(.caption)
+                        .multilineTextAlignment(.center)
+                        .foregroundStyle(.gray)
+                }
+                .padding()
+            } else if let player = player {
+                CustomVideoPlayer(player: player)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .edgesIgnoringSafeArea(.all)
+                
+                if showPlayButton || !isPlaying {
+                    Image(systemName: isPlaying ? "pause.fill" : "play.fill")
+                        .font(.system(size: 50))
+                        .foregroundStyle(.white.opacity(0.8))
+                        .transition(.opacity)
+                }
             }
         }
-        .contentShape(Rectangle()) // Makes entire area tappable
+        .contentShape(Rectangle())
         .onTapGesture {
             withAnimation(.easeInOut(duration: 0.2)) {
                 showPlayButton = true
             }
             
-            // Toggle play state
             isPlaying.toggle()
             if isPlaying {
                 player?.play()
-                // Only auto-hide if we're playing
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.8) {
                     withAnimation(.easeInOut(duration: 0.2)) {
                         showPlayButton = false
+                    }
+                }
+                
+                // Track view after 1 second of playback
+                if !hasTrackedView, let video = video {
+                    Task {
+                        try? await Task.sleep(nanoseconds: 1_000_000_000)
+                        if isPlaying {
+                            try? await videoModel.incrementViewCount(for: video)
+                            hasTrackedView = true
+                        }
                     }
                 }
             } else {
@@ -102,46 +163,37 @@ struct VideoPlayerView: View {
             isPlaying = newValue
             if newValue {
                 player?.play()
-                // Auto-hide when starting to play
                 withAnimation(.easeInOut(duration: 0.2)) {
                     showPlayButton = false
+                }
+                
+                // Track view after 1 second of playback
+                if !hasTrackedView, let video = video {
+                    Task {
+                        try? await Task.sleep(nanoseconds: 1_000_000_000)
+                        if isPlaying {
+                            try? await videoModel.incrementViewCount(for: video)
+                            hasTrackedView = true
+                        }
+                    }
                 }
             } else {
                 player?.pause()
             }
         }
-        .onAppear {
+        .task {
             // Configure URLCache to use our settings
             URLCache.shared = Self.cache
             
-            // Create and setup player with caching
-            player = loadVideoWithCache()
+            // Load video asynchronously
+            await loadVideoWithCache()
             
             // Monitor data usage
             monitorAssetSize()
             
-            // Configure player
-            player?.actionAtItemEnd = .none
-            player?.isMuted = false  // Start unmuted by default
+            // Configure initial state
             isPlaying = shouldPlay
-            showPlayButton = !shouldPlay // Show play button if starting paused
-            
-            // Only play if this is the current video
-            if shouldPlay {
-                player?.play()
-            }
-            
-            // Add loop behavior
-            NotificationCenter.default.addObserver(
-                forName: .AVPlayerItemDidPlayToEndTime,
-                object: player?.currentItem,
-                queue: .main
-            ) { _ in
-                player?.seek(to: .zero)
-                if shouldPlay {
-                    player?.play()
-                }
-            }
+            showPlayButton = !shouldPlay
         }
         .onDisappear {
             // Cleanup
@@ -162,18 +214,8 @@ struct CustomVideoPlayer: UIViewControllerRepresentable {
         controller.showsPlaybackControls = false  // Hide default controls
         controller.view.backgroundColor = .black  // Set background color to black
         
-        // Set initial gravity to aspect (centered)
+        // Always use resizeAspect to maintain proper video proportions
         controller.videoGravity = .resizeAspect
-        
-        // Check video dimensions and update gravity accordingly
-        if let playerItem = player?.currentItem {
-            let tracks = playerItem.asset.tracks(withMediaType: .video)
-            if let videoTrack = tracks.first {
-                let size = videoTrack.naturalSize.applying(videoTrack.preferredTransform)
-                let isPortrait = abs(size.height) > abs(size.width)
-                controller.videoGravity = isPortrait ? .resizeAspectFill : .resizeAspect
-            }
-        }
         
         return controller
     }
