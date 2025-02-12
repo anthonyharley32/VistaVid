@@ -79,7 +79,16 @@ struct ProfileView: View {
                             .frame(maxWidth: .infinity)
                             .padding(.horizontal)
                         } else {
-                            VideosGridSection(videos: userVideos, videoModel: videoModel)
+                            VideosGridSection(
+                                title: "Posts",
+                                videos: userVideos,
+                                onVideoTap: { video in
+                                    // Handle video tap
+                                },
+                                onDelete: { video in
+                                    // Handle delete
+                                }
+                            )
                                 .padding(.top, 2)
                         }
                     } else {
@@ -98,7 +107,16 @@ struct ProfileView: View {
                             .frame(maxWidth: .infinity)
                             .padding(.horizontal)
                         } else {
-                            VideosGridSection(videos: likedVideos, videoModel: videoModel)
+                            VideosGridSection(
+                                title: "Likes",
+                                videos: likedVideos,
+                                onVideoTap: { video in
+                                    // Handle video tap
+                                },
+                                onDelete: { video in
+                                    // Handle delete
+                                }
+                            )
                                 .padding(.top, 2)
                         }
                     }

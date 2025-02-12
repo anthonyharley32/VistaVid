@@ -15,7 +15,7 @@ struct MainView: View {
     var body: some View {
         ZStack(alignment: .bottom) {
             TabView(selection: $selectedTab) {
-                PlaceholderFeedView()
+                FYPView()
                     .tabItem {
                         Image(systemName: "house.fill")
                         Text("Home")

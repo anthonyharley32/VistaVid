@@ -3,20 +3,30 @@ import AVKit
 
 // MARK: - Videos Grid Section
 struct VideosGridSection: View {
+    let title: String
     let videos: [Video]
-    let videoModel: VideoViewModel
-    
-    private let columns = [
-        GridItem(.flexible()),
-        GridItem(.flexible()),
-        GridItem(.flexible())
-    ]
+    let onVideoTap: (Video) -> Void
+    let onDelete: ((Video) -> Void)?
     
     var body: some View {
-        LazyVGrid(columns: columns, spacing: 2) {
-            ForEach(0..<videos.count, id: \.self) { index in
-                NavigationLink(destination: VideoView(video: videos[index])) {
-                    VideoThumbnail(video: videos[index])
+        VStack(alignment: .leading) {
+            if !title.isEmpty {
+                Text(title)
+                    .font(.headline)
+                    .padding(.horizontal)
+            }
+            
+            LazyVGrid(columns: [
+                GridItem(.flexible(), spacing: 1),
+                GridItem(.flexible(), spacing: 1),
+                GridItem(.flexible(), spacing: 1)
+            ], spacing: 1) {
+                ForEach(videos) { video in
+                    VideoThumbnail(
+                        video: video,
+                        onTap: { onVideoTap(video) },
+                        onDelete: onDelete != nil ? { onDelete?(video) } : nil
+                    )
                 }
             }
         }
@@ -35,41 +45,6 @@ struct VideoView: View {
             ContentUnavailableView("Video Unavailable",
                 systemImage: "video.slash",
                 description: Text("This video cannot be played"))
-        }
-    }
-}
-
-// MARK: - Video Thumbnail
-private struct VideoThumbnail: View {
-    let video: Video
-    @State private var thumbnail: UIImage?
-    
-    var body: some View {
-        ZStack {
-            if let thumbnail = thumbnail {
-                Image(uiImage: thumbnail)
-                    .resizable()
-                    .aspectRatio(9/16, contentMode: .fill)
-            } else {
-                Rectangle()
-                    .fill(Color.gray.opacity(0.3))
-                    .aspectRatio(9/16, contentMode: .fill)
-            }
-        }
-        .clipped()
-        .task {
-            if let url = video.url {
-                let asset = AVURLAsset(url: url)
-                let imageGenerator = AVAssetImageGenerator(asset: asset)
-                imageGenerator.appliesPreferredTrackTransform = true
-                
-                do {
-                    let cgImage = try await imageGenerator.image(at: .zero).image
-                    thumbnail = UIImage(cgImage: cgImage)
-                } catch {
-                    print("Error generating thumbnail: \(error)")
-                }
-            }
         }
     }
 }

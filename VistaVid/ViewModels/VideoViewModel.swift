@@ -31,31 +31,84 @@ final class VideoViewModel: ObservableObject {
     /// Fetches the initial batch of videos
     func fetchInitialVideos() async {
         debugLog("🎬 Fetching initial videos")
+        debugLog("🔥 Using Firestore instance: \(db)")
         isLoading = true
         defer { isLoading = false }
         
-        do {
-            let query = db.collection("videos")
-                .order(by: "createdAt", descending: true)
-                .limit(to: batchSize)
-            
-            let snapshot = try await query.getDocuments()
-            debugLog("📄 Got \(snapshot.documents.count) videos")
-            
-            videos = snapshot.documents.compactMap { document in
-                guard let video = Video.fromFirestore(document.data(), id: document.documentID) else {
-                    debugLog("❌ Failed to parse video document: \(document.documentID)")
-                    return nil
+        // Enable Firestore debug logging
+        Firestore.enableLogging(true)
+        
+        // Add retry logic
+        let maxRetries = 3
+        var currentRetry = 0
+        
+        while currentRetry < maxRetries {
+            do {
+                let query = db.collection("videos")
+                    .whereField("status", isEqualTo: "processed")
+                    .order(by: "createdAt", descending: true)
+                    .limit(to: batchSize)
+                
+                debugLog("🔍 Executing query: \(query)")
+                debugLog("🔄 Attempt \(currentRetry + 1) of \(maxRetries)")
+                
+                let snapshot = try await query.getDocuments()
+                debugLog("📄 Got \(snapshot.documents.count) videos")
+                
+                if snapshot.documents.isEmpty {
+                    debugLog("⚠️ No videos found in database")
+                    return
                 }
-                return video
+                
+                var processedVideos: [Video] = []
+                
+                // Process each video document
+                for document in snapshot.documents {
+                    debugLog("🎥 Processing video: \(document.documentID)")
+                    let data = document.data()
+                    debugLog("📋 Video data: \(data)")
+                    
+                    guard var video = Video.fromFirestore(data, id: document.documentID) else {
+                        debugLog("❌ Failed to parse video: \(document.documentID)")
+                        continue
+                    }
+                    
+                    // Fetch user data for the video
+                    if let userData = await fetchUserForVideo(video) {
+                        video.user = userData
+                        debugLog("👤 Added user data to video: \(document.documentID)")
+                    }
+                    
+                    processedVideos.append(video)
+                    debugLog("✅ Successfully processed video: \(document.documentID)")
+                }
+                
+                debugLog("📊 Successfully parsed \(processedVideos.count) out of \(snapshot.documents.count) videos")
+                
+                // Update videos array on main thread
+                await MainActor.run {
+                    self.videos = processedVideos
+                    self.lastDocument = snapshot.documents.last
+                }
+                
+                debugLog("✅ Successfully fetched initial videos: \(processedVideos.count) videos loaded")
+                return
+                
+            } catch {
+                debugLog("❌ Error fetching videos (attempt \(currentRetry + 1)): \(error.localizedDescription)")
+                debugLog("🔍 Detailed error: \(error)")
+                currentRetry += 1
+                
+                if currentRetry < maxRetries {
+                    debugLog("⏳ Waiting before retry...")
+                    try? await Task.sleep(nanoseconds: UInt64(1_000_000_000 * currentRetry))
+                } else {
+                    await MainActor.run {
+                        self.error = error
+                    }
+                    debugLog("❌ All retry attempts failed")
+                }
             }
-            
-            lastDocument = snapshot.documents.last
-            debugLog("✅ Successfully fetched initial videos")
-            
-        } catch {
-            debugLog("❌ Error fetching videos: \(error.localizedDescription)")
-            self.error = error
         }
     }
     
@@ -72,6 +125,7 @@ final class VideoViewModel: ObservableObject {
         
         do {
             let query = db.collection("videos")
+                .whereField("status", isEqualTo: "processed")
                 .order(by: "createdAt", descending: true)
                 .start(afterDocument: lastDocument)
                 .limit(to: batchSize)
@@ -79,13 +133,34 @@ final class VideoViewModel: ObservableObject {
             let snapshot = try await query.getDocuments()
             debugLog("📄 Got \(snapshot.documents.count) more videos")
             
-            let mappedVideos = snapshot.documents.map { document in
-                Video.fromFirestore(document.data(), id: document.documentID)
-            }
-            let newVideos = mappedVideos.compactMap { $0 }
+            var processedVideos: [Video] = []
             
-            videos.append(contentsOf: newVideos)
-            self.lastDocument = snapshot.documents.last
+            // Process each video document
+            for document in snapshot.documents {
+                debugLog("🎥 Processing video: \(document.documentID)")
+                guard var video = Video.fromFirestore(document.data(), id: document.documentID) else {
+                    debugLog("❌ Failed to parse video: \(document.documentID)")
+                    continue
+                }
+                
+                // Fetch user data for the video
+                if let userData = await fetchUserForVideo(video) {
+                    video.user = userData
+                    debugLog("👤 Added user data to video: \(document.documentID)")
+                }
+                
+                processedVideos.append(video)
+                debugLog("✅ Successfully processed video: \(document.documentID)")
+            }
+            
+            debugLog("📊 Successfully parsed \(processedVideos.count) out of \(snapshot.documents.count) videos")
+            
+            // Update videos array on main thread
+            await MainActor.run {
+                self.videos.append(contentsOf: processedVideos)
+                self.lastDocument = snapshot.documents.last
+            }
+            
             debugLog("✅ Successfully fetched next batch")
             
         } catch {
@@ -130,12 +205,24 @@ final class VideoViewModel: ObservableObject {
             debugLog("📝 Creating initial Firestore document")
             let initialVideo = Video(
                 id: videoId,
-                userId: currentUser.uid,
-                videoUrl: "", // Will be updated after upload
-                thumbnailUrl: nil,
+                creatorId: currentUser.uid,
+                title: "Untitled",
                 description: description,
+                videoUrl: "",
+                genre: "Other",
+                uploadTimestamp: ISO8601DateFormatter().string(from: Date()),
+                preprocessedTutorial: false,
+                interactionCounts: Video.InteractionCounts(likes: 0, shares: 0, comments: 0, saves: 0),
+                user: nil,
+                thumbnailUrl: nil,
                 createdAt: Date(),
                 algorithmTags: algorithmTags,
+                likesCount: 0,
+                commentsCount: 0,
+                sharesCount: 0,
+                businessData: nil,
+                status: "uploading",
+                hlsUrl: nil,
                 communityId: communityId
             )
             var initialVideoDict = initialVideo.toDictionary()
@@ -149,7 +236,7 @@ final class VideoViewModel: ObservableObject {
             let metadata = StorageMetadata()
             metadata.contentType = "video/mp4"
             metadata.customMetadata = [
-                "userId": currentUser.uid,
+                "creatorId": currentUser.uid,
                 "videoId": videoId
             ]
             
@@ -170,7 +257,7 @@ final class VideoViewModel: ObservableObject {
             if let thumbnail = try await generateThumbnail(for: videoURL),
                let thumbnailData = thumbnail.jpegData(compressionQuality: 0.7) {
                 let thumbnailRef = storage.reference().child("thumbnails/\(videoId).jpg")
-                let metadata = MediaMetadata(userId: currentUser.uid, videoId: videoId)
+                let metadata = MediaMetadata(creatorId: currentUser.uid, videoId: videoId)
                 debugLog("📤 Uploading thumbnail")
                 _ = try await thumbnailRef.putDataAsync(thumbnailData, metadata: metadata.asMetadata)
                 let thumbnailUrl = try await thumbnailRef.downloadURL().absoluteString
@@ -235,9 +322,9 @@ final class VideoViewModel: ObservableObject {
         debugLog("👤 Fetching user data for video: \(video.id)")
         
         do {
-            let userDoc = try await db.collection("users").document(video.userId).getDocument()
+            let userDoc = try await db.collection("users").document(video.creatorId).getDocument()
             guard let userData = userDoc.data() else {
-                debugLog("❌ No user data found for ID: \(video.userId)")
+                debugLog("❌ No user data found for ID: \(video.creatorId)")
                 return nil
             }
             
@@ -354,7 +441,12 @@ final class VideoViewModel: ObservableObject {
                 debugLog("✅ Successfully unliked video")
             } else {
                 // Like
-                let like = Like(userId: currentUser.uid, videoId: video.id)
+                let like = Like(
+                    id: UUID().uuidString,
+                    userId: currentUser.uid,
+                    videoId: video.id,
+                    createdAt: Date()
+                )
                 try await setDocumentData(like.toDictionary(), for: likeRef)
                 try await updateVideoData(["likesCount": FieldValue.increment(Int64(1))], for: videoRef)
                 debugLog("✅ Successfully liked video")
@@ -490,6 +582,7 @@ final class VideoViewModel: ObservableObject {
             // First try to get videos without ordering
             let query = db.collection("videos")
                 .whereField("userId", isEqualTo: userId)
+                .whereField("status", isEqualTo: "processed")  // Only fetch processed videos
             
             let snapshot = try await query.getDocuments()
             debugLog("📄 Got \(snapshot.documents.count) videos for user")
@@ -499,14 +592,30 @@ final class VideoViewModel: ObservableObject {
                 return []
             }
             
-            var userVideos = snapshot.documents.compactMap { document -> Video? in
+            var userVideos = [Video]()
+            
+            // Process videos one by one with proper error handling
+            for document in snapshot.documents {
                 debugLog("📝 Processing video document: \(document.documentID)")
-                guard let video = Video.fromFirestore(document.data(), id: document.documentID) else {
-                    debugLog("❌ Failed to parse video document: \(document.documentID)")
-                    return nil
+                do {
+                    guard var video = Video.fromFirestore(document.data(), id: document.documentID) else {
+                        debugLog("❌ Failed to parse video document: \(document.documentID)")
+                        continue
+                    }
+                    
+                    // Safely fetch user data
+                    if let userData = await fetchUserForVideo(video) {
+                        video.user = userData
+                        debugLog("👤 Added user data to video: \(document.documentID)")
+                    }
+                    
+                    userVideos.append(video)
+                    debugLog("✅ Successfully processed video: \(document.documentID)")
+                } catch {
+                    debugLog("⚠️ Error processing video \(document.documentID): \(error.localizedDescription)")
+                    // Continue with next video instead of crashing
+                    continue
                 }
-                debugLog("✅ Successfully parsed video: \(document.documentID)")
-                return video
             }
             
             // Sort in memory instead of using Firestore ordering
@@ -522,9 +631,20 @@ final class VideoViewModel: ObservableObject {
                 // If index error, try without ordering
                 let query = db.collection("videos")
                     .whereField("userId", isEqualTo: userId)
+                    .whereField("status", isEqualTo: "processed")  // Only fetch processed videos
                 
                 let snapshot = try await query.getDocuments()
-                var videos = snapshot.documents.compactMap { Video.fromFirestore($0.data(), id: $0.documentID) }
+                var videos = [Video]()
+                
+                for document in snapshot.documents {
+                    if var video = Video.fromFirestore(document.data(), id: document.documentID) {
+                        if let userData = await fetchUserForVideo(video) {
+                            video.user = userData
+                        }
+                        videos.append(video)
+                    }
+                }
+                
                 videos.sort { $0.createdAt > $1.createdAt }
                 return videos
             }
@@ -607,13 +727,13 @@ final class VideoViewModel: ObservableObject {
     
     // MARK: - Metadata Types
     private struct MediaMetadata: Sendable {
-        let userId: String
+        let creatorId: String
         let videoId: String
         
         var asMetadata: StorageMetadata {
             let metadata = StorageMetadata()
             metadata.contentType = "image/jpeg"
-            metadata.customMetadata = ["userId": userId, "videoId": videoId]
+            metadata.customMetadata = ["creatorId": creatorId, "videoId": videoId]
             return metadata
         }
     }

@@ -1,6 +1,7 @@
 import SwiftUI
 import FirebaseAuth
 import AVKit
+import FirebaseFirestore
 
 struct UserProfileView: View {
     @State private var videoModel = VideoViewModel()
@@ -10,9 +11,66 @@ struct UserProfileView: View {
     @State private var likedVideos: [Video] = []
     @State private var navigateToChat = false
     @State private var selectedTab = 0
-    let user: User
+    @State private var loadedUser: User?
+    @State private var isLoading = true
+    @State private var selectedVideo: Video?
+    @State private var showVideoPlayer = false
+    
+    let user: User?
+    let userId: String?
+    
+    init(user: User) {
+        self.user = user
+        self.userId = nil
+    }
+    
+    init(userId: String) {
+        self.user = nil
+        self.userId = userId
+    }
+    
+    private var displayUser: User? {
+        user ?? loadedUser
+    }
     
     var body: some View {
+        Group {
+            if let user = displayUser {
+                userProfileContent(user: user)
+            } else if isLoading {
+                ProgressView()
+            } else {
+                ContentUnavailableView("User Not Found",
+                    systemImage: "person.slash",
+                    description: Text("This user could not be found"))
+            }
+        }
+        .task {
+            if let userId = userId {
+                await loadUser(userId: userId)
+            }
+        }
+    }
+    
+    private func loadUser(userId: String) async {
+        isLoading = true
+        defer { isLoading = false }
+        
+        do {
+            let db = Firestore.firestore()
+            let document = try await db.collection("users").document(userId).getDocument()
+            
+            if let userData = document.data(),
+               let user = User.fromFirestore(userData, id: userId) {
+                loadedUser = user
+            }
+        } catch {
+            print("❌ Error loading user: \(error)")
+        }
+    }
+    
+    @ViewBuilder
+    private func userProfileContent(user: User) -> some View {
         ScrollView(showsIndicators: false) {
             VStack(spacing: 0) {
                 // Profile Header
@@ -102,8 +160,16 @@ struct UserProfileView: View {
                         .frame(maxWidth: .infinity)
                         .padding(.horizontal)
                     } else {
-                        VideosGridSection(videos: userVideos, videoModel: videoModel)
-                            .padding(.top, 2)
+                        VideosGridSection(
+                            title: "",
+                            videos: userVideos,
+                            onVideoTap: { video in
+                                selectedVideo = video
+                                showVideoPlayer = true
+                            },
+                            onDelete: nil
+                        )
+                        .padding(.top, 2)
                     }
                 } else {
                     if likedVideos.isEmpty {
@@ -121,8 +187,16 @@ struct UserProfileView: View {
                         .frame(maxWidth: .infinity)
                         .padding(.horizontal)
                     } else {
-                        VideosGridSection(videos: likedVideos, videoModel: videoModel)
-                            .padding(.top, 2)
+                        VideosGridSection(
+                            title: "",
+                            videos: likedVideos,
+                            onVideoTap: { video in
+                                selectedVideo = video
+                                showVideoPlayer = true
+                            },
+                            onDelete: nil
+                        )
+                        .padding(.top, 2)
                     }
                 }
             }
@@ -131,6 +205,14 @@ struct UserProfileView: View {
         .navigationTitle("@\(user.username)")
         .navigationDestination(isPresented: $navigateToChat) {
             ChatView(recipient: user)
+        }
+        .fullScreenCover(isPresented: $showVideoPlayer) {
+            if let video = selectedVideo {
+                VideoFeedView(
+                    videos: selectedTab == 0 ? userVideos : likedVideos,
+                    startingIndex: (selectedTab == 0 ? userVideos : likedVideos).firstIndex(of: video) ?? 0
+                )
+            }
         }
         .onAppear {
             print("👤 UserProfileView appeared for user: \(user.username)")
@@ -145,6 +227,8 @@ struct UserProfileView: View {
     }
     
     private func loadContent() async {
+        guard let user = displayUser else { return }
+        
         print("🎥 Fetching videos for user: \(user.id)")
         if let videos = try? await videoModel.fetchUserVideos(userId: user.id) {
             userVideos = videos
