@@ -39,7 +39,7 @@ struct VideoCardView: View {
         .task {
             await checkLikeStatus()
         }
-        .onChange(of: isCurrentlyPlaying) { newValue in
+        .onChange(of: isCurrentlyPlaying) { _, newValue in
             print("👁️ [VideoCardView] Play state changed to: \(newValue)")
         }
     }

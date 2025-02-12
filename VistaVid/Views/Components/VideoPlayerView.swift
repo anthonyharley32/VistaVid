@@ -77,28 +77,24 @@ struct VideoPlayerView: View {
     
     private func monitorAssetSize() {
         Task {
-            do {
-                let asset = AVURLAsset(url: url)
-                if let tracks = try? await asset.load(.tracks) {
-                    var totalSize: Int64 = 0
-                    
-                    for track in tracks {
-                        if let size = try? await track.load(.totalSampleDataLength) {
-                            totalSize += size
-                        }
-                    }
-                    
-                    print("🎥 Video loaded - URL: \(url.lastPathComponent)")
-                    print("📊 Estimated size: \(formatFileSize(totalSize))")
-                    
-                    // Print cache status
-                    if let cachedResponse = Self.cache.cachedResponse(for: URLRequest(url: url)) {
-                        print("💾 Video is cached - Size in cache: \(formatFileSize(Int64(cachedResponse.data.count)))")
+            let asset = AVURLAsset(url: url)
+            if let tracks = try? await asset.load(.tracks) {
+                var totalSize: Int64 = 0
+                
+                for track in tracks {
+                    if let size = try? await track.load(.totalSampleDataLength) {
+                        totalSize += size
                     }
                 }
-            } catch {
-                print("❌ Error monitoring asset size: \(error)")
-            }
+                
+                print("🎥 Video loaded - URL: \(url.lastPathComponent)")
+                print("📊 Estimated size: \(formatFileSize(totalSize))")
+                
+                // Print cache status
+                if let cachedResponse = Self.cache.cachedResponse(for: URLRequest(url: url)) {
+                    print("💾 Video is cached - Size in cache: \(formatFileSize(Int64(cachedResponse.data.count)))")
+                }
+            } 
         }
     }
     
@@ -133,7 +129,7 @@ struct VideoPlayerView: View {
             isPlaying.toggle()
             handlePlayPauseChange()
         }
-        .onChange(of: shouldPlay) { newValue in
+        .onChange(of: shouldPlay) { oldValue, newValue in
             print("👁️ [VideoPlayerView] shouldPlay changed to: \(newValue)")
             isPlaying = newValue
             handlePlayPauseChange()
