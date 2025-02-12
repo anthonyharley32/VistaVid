@@ -7,6 +7,7 @@ struct VideoPlayerView: View {
     let video: Video?
     @StateObject private var videoModel = VideoViewModel()
     @State private var player: AVPlayer?
+    @State private var playerLooper: AVPlayerLooper?
     @State private var showPlayButton = false
     @State private var isPlaying = true
     @State private var hasTrackedView = false
@@ -38,12 +39,17 @@ struct VideoPlayerView: View {
             // Load the asset's tracks asynchronously
             _ = try await asset.load(.tracks)
             
+            // Create a player item template for looping
             let playerItem = AVPlayerItem(asset: asset)
             
-            // Create player on the main thread
+            // Create player and looper on the main thread
             await MainActor.run {
-                player = AVPlayer(playerItem: playerItem)
-                player?.actionAtItemEnd = .none
+                let queuePlayer = AVQueuePlayer()
+                player = queuePlayer
+                
+                // Create player looper with the queue player
+                playerLooper = AVPlayerLooper(player: queuePlayer, templateItem: playerItem)
+                
                 player?.isMuted = false
                 
                 if shouldPlay {
@@ -53,7 +59,7 @@ struct VideoPlayerView: View {
                 isLoading = false
             }
             
-            print("✅ Successfully loaded video")
+            print("✅ Successfully loaded video with looping enabled")
         } catch {
             print("❌ Error loading video: \(error)")
             await MainActor.run {
@@ -198,6 +204,8 @@ struct VideoPlayerView: View {
         .onDisappear {
             // Cleanup
             player?.pause()
+            playerLooper?.disableLooping()  // Disable looping
+            playerLooper = nil  // Release the looper
             player = nil
             NotificationCenter.default.removeObserver(self)
         }

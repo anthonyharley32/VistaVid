@@ -7,6 +7,21 @@ struct VideoCardView: View {
     let onDoubleTap: (CGPoint) -> Void
     let onProfileTap: ((String) -> Void)?
     
+    @StateObject private var videoModel = VideoViewModel()
+    @State private var isLiked = false
+    @State private var localLikesCount: Int
+    @State private var localCommentsCount: Int
+    @State private var showComments = false
+    
+    init(video: Video, isCurrentlyPlaying: Binding<Bool>, onDoubleTap: @escaping (CGPoint) -> Void, onProfileTap: ((String) -> Void)?) {
+        self.video = video
+        self._isCurrentlyPlaying = isCurrentlyPlaying
+        self.onDoubleTap = onDoubleTap
+        self.onProfileTap = onProfileTap
+        self._localLikesCount = State(initialValue: video.likesCount)
+        self._localCommentsCount = State(initialValue: video.commentsCount)
+    }
+    
     var body: some View {
         GeometryReader { geometry in
             ZStack {
@@ -35,6 +50,9 @@ struct VideoCardView: View {
                     .contentShape(Rectangle())
                     .onTapGesture(count: 2) { location in
                         onDoubleTap(location)
+                        if !isLiked {
+                            handleLike()
+                        }
                     }
                 
                 VStack {
@@ -66,23 +84,31 @@ struct VideoCardView: View {
                         
                         // Interaction buttons
                         VStack(spacing: 20) {
-                            VStack(spacing: 4) {
-                                Image(systemName: "heart.fill")
-                                    .font(.system(size: 24))
-                                    .foregroundStyle(.white)
-                                    .shadow(color: .black.opacity(0.3), radius: 8, x: 0, y: 4)
-                                Text("\(video.interactionCounts.likes)")
-                                    .font(.caption)
-                                    .bold()
+                            Button {
+                                handleLike()
+                            } label: {
+                                VStack(spacing: 4) {
+                                    Image(systemName: isLiked ? "heart.fill" : "heart")
+                                        .font(.system(size: 24))
+                                        .foregroundStyle(isLiked ? .red : .white)
+                                        .shadow(color: .black.opacity(0.3), radius: 8, x: 0, y: 4)
+                                    Text("\(localLikesCount)")
+                                        .font(.caption)
+                                        .bold()
+                                }
                             }
-                            VStack(spacing: 4) {
-                                Image(systemName: "bubble.right.fill")
-                                    .font(.system(size: 28))
-                                    .foregroundStyle(.white)
-                                    .shadow(color: .black.opacity(0.3), radius: 8, x: 0, y: 4)
-                                Text("\(video.commentsCount)")
-                                    .font(.caption)
-                                    .bold()
+                            Button {
+                                showComments = true
+                            } label: {
+                                VStack(spacing: 4) {
+                                    Image(systemName: "bubble.right.fill")
+                                        .font(.system(size: 28))
+                                        .foregroundStyle(.white)
+                                        .shadow(color: .black.opacity(0.3), radius: 8, x: 0, y: 4)
+                                    Text("\(localCommentsCount)")
+                                        .font(.caption)
+                                        .bold()
+                                }
                             }
                             VStack(spacing: 4) {
                                 Image(systemName: "arrowshape.turn.up.right.fill")
@@ -103,5 +129,32 @@ struct VideoCardView: View {
         }
         .background(Color.black)
         .ignoresSafeArea()
+        .sheet(isPresented: $showComments) {
+            CommentView(video: video, onCommentAdded: { 
+                localCommentsCount += 1
+            })
+        }
+        .task {
+            // Check if user has liked this video
+            do {
+                isLiked = try await videoModel.checkLikeStatus(for: video)
+                print("✅ Successfully checked like status: \(isLiked)")
+            } catch {
+                print("❌ Error checking like status: \(error)")
+            }
+        }
+    }
+    
+    private func handleLike() {
+        Task {
+            do {
+                try await videoModel.toggleLike(for: video)
+                isLiked.toggle()
+                localLikesCount += isLiked ? 1 : -1
+                print("✅ Successfully toggled like")
+            } catch {
+                print("❌ Error toggling like: \(error)")
+            }
+        }
     }
 } 
