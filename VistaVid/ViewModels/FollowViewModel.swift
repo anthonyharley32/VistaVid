@@ -1,20 +1,22 @@
 import Foundation
 import FirebaseFirestore
 import FirebaseAuth
+import Combine
 
-@Observable final class FollowViewModel {
+final class FollowViewModel: ObservableObject {
     // MARK: - Properties
     private let db: Firestore
     private var followsListener: ListenerRegistration?
     private var followersListener: ListenerRegistration?
+    private var followingListener: ListenerRegistration?
     
-    var isFollowing = false {
+    @Published var isFollowing = false {
         didSet {
             print("👥 Follow state changed: \(isFollowing)")
         }
     }
-    var followersCount = 0
-    var followingCount = 0
+    @Published var followersCount = 0
+    @Published var followingCount = 0
     private var isProcessing = false
     
     // MARK: - Initialization
@@ -55,6 +57,19 @@ import FirebaseAuth
                 
                 self?.followersCount = snapshot?.documents.count ?? 0
             }
+            
+        // Listen for following count
+        followingListener = db.collection("follows")
+            .whereField("followerId", isEqualTo: userId)
+            .addSnapshotListener { [weak self] snapshot, error in
+                if let error = error {
+                    print("❌ Error observing following: \(error.localizedDescription)")
+                    return
+                }
+                
+                self?.followingCount = snapshot?.documents.count ?? 0
+                print("👥 Updated following count: \(snapshot?.documents.count ?? 0)")
+            }
     }
     
     func toggleFollow(for userId: String) async throws {
@@ -86,5 +101,6 @@ import FirebaseAuth
     func cleanup() {
         followsListener?.remove()
         followersListener?.remove()
+        followingListener?.remove()
     }
 }

@@ -241,15 +241,17 @@ struct FYPView: View {
             .ignoresSafeArea()
             .preferredColorScheme(.dark)
             .task {
-                print("🏠 [FYP] View appeared, starting initial load")
-                await viewModel.loadInitialVideos()
-            }
-            .onAppear {
-                print("🏠 [FYP] View appeared")
+                // Only load videos if we haven't loaded any yet
+                if viewModel.videos.isEmpty {
+                    print("🏠 [FYP] View appeared, starting initial load")
+                    await viewModel.loadInitialVideos()
+                }
+                
+                print("🏠 [FYP] Setting up notification observers")
                 setupNotificationObservers()
             }
             .onDisappear {
-                print("🏠 [FYP] View disappeared")
+                print("🏠 [FYP] View disappeared, removing observers")
                 removeNotificationObservers()
             }
         }

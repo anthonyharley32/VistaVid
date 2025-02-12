@@ -7,6 +7,11 @@ struct ProfileView: View {
     @State private var userVideos: [Video] = []
     @State private var likedVideos: [Video] = []
     @State private var selectedTab = 0
+    @State private var selectedVideo: Video?
+    @State private var showVideoPlayer = false
+    @State private var showFollowList = false
+    @State private var selectedFollowType: FollowListView.FollowType?
+    @StateObject private var followModel = FollowViewModel()
     let user: User
     let authModel: AuthenticationViewModel
     
@@ -19,25 +24,43 @@ struct ProfileView: View {
                         CircularProfileImage(user: user, size: 100)
                         
                         VStack(spacing: 6) {
-                            Text("@\(user.username)")
-                                .font(.system(size: 16, weight: .semibold))
+                            Text(user.username)
+                                .font(.title2)
+                                .fontWeight(.bold)
                             
-                            Text("Bio coming soon")
-                                .font(.system(size: 14))
-                                .foregroundColor(.secondary)
+                            if let bio = user.bio {  // Display bio if available
+                                Text(bio)
+                                    .font(.subheadline)
+                                    .foregroundColor(.secondary)
+                                    .multilineTextAlignment(.center)
+                                    .padding(.horizontal)
+                            }
+                            
+                            HStack(spacing: 40) {
+                                Text("@\(user.username)")
+                                    .font(.system(size: 16, weight: .semibold))
+                            }
                         }
                         
                         // Stats Row
-                        HStack {
-                            Spacer()
-                            StatItem(value: "\(userVideos.count)", title: "Posts")
-                                .frame(width: 80)
-                            StatItem(value: "0", title: "Followers")
-                                .frame(width: 80)
-                            StatItem(value: "0", title: "Following")
-                                .frame(width: 80)
-                            Spacer()
+                        HStack(spacing: 35) {
+                            StatItem(value: "\(userVideos.count)", title: "Videos")
+                            
+                            Button {
+                                selectedFollowType = .following
+                                showFollowList = true
+                            } label: {
+                                StatItem(value: "\(followModel.followingCount)", title: "Following")
+                            }
+                            
+                            Button {
+                                selectedFollowType = .followers
+                                showFollowList = true
+                            } label: {
+                                StatItem(value: "\(followModel.followersCount)", title: "Followers")
+                            }
                         }
+                        .padding(.top, 5)
                     }
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 20)
@@ -131,8 +154,17 @@ struct ProfileView: View {
                 }
             }
         }
+        .sheet(isPresented: $showFollowList) {
+            if let followType = selectedFollowType,
+               let userId = Auth.auth().currentUser?.uid {
+                FollowListView(userId: userId, type: followType)
+            }
+        }
         .task {
             await loadContent()
+            if let userId = Auth.auth().currentUser?.uid {
+                followModel.startObservingFollowStatus(for: userId)
+            }
         }
     }
     

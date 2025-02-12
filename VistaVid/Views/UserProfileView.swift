@@ -15,6 +15,8 @@ struct UserProfileView: View {
     @State private var isLoading = true
     @State private var selectedVideo: Video?
     @State private var showVideoPlayer = false
+    @State private var showFollowList = false
+    @State private var selectedFollowType: FollowListView.FollowType?
     
     let user: User?
     let userId: String?
@@ -53,6 +55,12 @@ struct UserProfileView: View {
                 await loadContent()
             }
         }
+        .sheet(isPresented: $showFollowList) {
+            if let followType = selectedFollowType,
+               let userId = displayUser?.id {
+                FollowListView(userId: userId, type: followType)
+            }
+        }
     }
     
     private func loadUser(userId: String) async {
@@ -83,14 +91,37 @@ struct UserProfileView: View {
                 VStack(spacing: 15) {
                     CircularProfileImage(user: user, size: 100)
                     
-                    Text(user.username)
-                        .font(.system(size: 16, weight: .semibold))
+                    HStack(spacing: 40) {
+                        Text("@\(user.username)")
+                            .font(.system(size: 16, weight: .semibold))
+                    }
+                    
+                    if let bio = user.bio, !bio.isEmpty {
+                        Text(bio)
+                            .font(.system(size: 14))
+                            .foregroundColor(.secondary)
+                            .multilineTextAlignment(.center)
+                            .padding(.horizontal)
+                            .padding(.top, -5)
+                    }
                     
                     // Stats
                     HStack(spacing: 35) {
                         StatItem(value: "\(userVideos.count)", title: "Videos")
-                        StatItem(value: "\(followModel.followingCount)", title: "Following")
-                        StatItem(value: "\(followModel.followersCount)", title: "Followers")
+                        
+                        Button {
+                            selectedFollowType = .following
+                            showFollowList = true
+                        } label: {
+                            StatItem(value: "\(followModel.followingCount)", title: "Following")
+                        }
+                        
+                        Button {
+                            selectedFollowType = .followers
+                            showFollowList = true
+                        } label: {
+                            StatItem(value: "\(followModel.followersCount)", title: "Followers")
+                        }
                     }
                     .padding(.top, 5)
                     

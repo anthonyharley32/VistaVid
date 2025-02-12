@@ -210,14 +210,27 @@ private struct CreatorInfoView: View {
             let _ = print("👤 [CreatorInfoView] Rendering for user: \(user.username), id: \(user.id)")
             ProfileNavigationLink(user: user)
             
-            Button {
-                let _ = print("👆 [CreatorInfoView] Username button tapped for: \(user.username)")
-                onProfileTap?(user.id)
-            } label: {
-                Text("@\(user.username)")
-                    .font(.subheadline)
-                    .bold()
-                    .foregroundStyle(.white)
+            // Use the same navigation logic as the profile picture
+            if user.id == Auth.auth().currentUser?.uid {
+                Button {
+                    let _ = print("🏠 [CreatorInfoView] Navigating to own profile via tab")
+                    NotificationCenter.default.post(name: NSNotification.Name("NavigateToYouTab"), object: nil)
+                } label: {
+                    Text(user.username)
+                        .font(.subheadline)
+                        .bold()
+                        .foregroundStyle(.white)
+                }
+            } else {
+                NavigationLink {
+                    let _ = print("👥 [CreatorInfoView] Navigating to user profile")
+                    UserProfileView(user: user)
+                } label: {
+                    Text(user.username)
+                        .font(.subheadline)
+                        .bold()
+                        .foregroundStyle(.white)
+                }
             }
         }
     }

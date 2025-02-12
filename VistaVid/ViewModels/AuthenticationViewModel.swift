@@ -224,6 +224,21 @@ final class AuthenticationViewModel: ObservableObject {
         }
     }
     
+    /// Updates the user's bio
+    func updateBio(_ newBio: String) async throws {
+        guard let user = currentUser else { return }
+        
+        // Update in Firestore
+        try await userRef(user.id).updateData([
+            "bio": newBio
+        ])
+        
+        // Update local user
+        var updatedUser = user
+        updatedUser.bio = newBio
+        self.currentUser = updatedUser
+    }
+    
     /// Updates the user's algorithm preferences
     func updateAlgorithmPreferences(algorithm: String, isSelected: Bool) async throws {
         debugLog("Attempting to update algorithm preference: \(algorithm) to \(isSelected)")
@@ -341,5 +356,9 @@ final class AuthenticationViewModel: ObservableObject {
         if debug {
             print("🔐 [Auth]: \(message)")
         }
+    }
+    
+    private func userRef(_ userId: String) -> DocumentReference {
+        db.collection("users").document(userId)
     }
 } 

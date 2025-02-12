@@ -16,7 +16,7 @@ struct SignInView: View {
         NavigationStack {
             VStack(spacing: 20) {
                 // Network Status Banner
-                if !model.isOffline {
+                if model.isOffline {
                     HStack {
                         Image(systemName: "wifi.slash")
                         Text("You're offline")

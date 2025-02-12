@@ -7,6 +7,7 @@ struct SettingsView: View {
     @State private var showingAlert = false
     @State private var alertMessage = ""
     @State private var showingSignOutConfirmation = false
+    @State private var bio = ""  // Add bio state
     
     var body: some View {
         List {
@@ -53,7 +54,7 @@ struct SettingsView: View {
                 
                 // Edit Profile Button
                 NavigationLink {
-                    ProfileEditView(model: model)
+                    ProfileEditView(model: model, bio: $bio)
                 } label: {
                     Label("Edit Profile", systemImage: "pencil.circle.fill")
                         .foregroundColor(.blue)
@@ -201,6 +202,7 @@ struct SettingsView: View {
 // Profile Edit View
 struct ProfileEditView: View {
     @ObservedObject var model: AuthenticationViewModel
+    @Binding var bio: String
     @State private var username: String = ""
     @State private var showingImagePicker = false
     @State private var profileImage: UIImage?
@@ -262,6 +264,11 @@ struct ProfileEditView: View {
                 TextField("Username", text: $username)
                     .textContentType(.username)
                     .autocapitalization(.none)
+                
+                // Bio Field
+                TextField("Bio", text: $bio, axis: .vertical)
+                    .lineLimit(3...5)
+                    .textContentType(.none)
             } header: {
                 Text("Profile Information")
             } footer: {
@@ -293,6 +300,7 @@ struct ProfileEditView: View {
         }
         .onAppear {
             username = model.currentUser?.username ?? ""
+            bio = model.currentUser?.bio ?? ""
         }
     }
     
@@ -304,6 +312,7 @@ struct ProfileEditView: View {
                     try await model.updateProfilePicture(image)
                 }
                 try await model.updateUsername(username)
+                try await model.updateBio(bio)
                 await MainActor.run {
                     isUpdatingProfile = false
                     dismiss()

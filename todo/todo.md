@@ -1,20 +1,24 @@
 ### TODO
 
 #Week 6
-[ ] Profile button on videos
 [ ] Redo shares
 [ ] Redo like animation
-[ ] Redo hands free mode
 [ ] Redo play/pause button
 [ ] Redo community feed
-[ ] DM message persistence
+[ ] DM message persistence -when I send a message, it sends but it's still in the message input. Fix this DM message persistence.
 [ ] Bio
 [ ] Algoriothm utility function
-[ ] settings clean up - UI is a little weird and there's a lot of bricked links on there like the privacy policy.
+[ ] settings clean up - UI is a little weird and there's a lot of bricked links on @settingsView like the privacy policy.
 [ ] Algorithm Accountability - currently just UI on settings. Improve UI/UX and implement funcitonality.
 [ ] Content Moderation
+[ ] following = 0
+[ ] settings button delayed visibility
+[ ] Accent color
 [ ] Let videos show right after upload
+[X] offline
 [-] Community page shows blank on long press
+[X] Redo hands free mode
+[X] Profile button on videos
 [X] Profile picture on video card
 [X] Looped video
 [X] Redo comments

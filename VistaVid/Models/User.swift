@@ -14,6 +14,7 @@ class User: Identifiable, Codable, Hashable {
     var selectedAlgorithms: [String]
     var followersCount: Int
     var followingCount: Int
+    var bio: String?
     
     // MARK: - Codable Keys
     enum CodingKeys: String, CodingKey {
@@ -26,6 +27,7 @@ class User: Identifiable, Codable, Hashable {
         case selectedAlgorithms
         case followersCount
         case followingCount
+        case bio
     }
     
     required init(from decoder: Decoder) throws {
@@ -40,10 +42,11 @@ class User: Identifiable, Codable, Hashable {
         selectedAlgorithms = try container.decodeIfPresent([String].self, forKey: .selectedAlgorithms) ?? []
         followersCount = try container.decodeIfPresent(Int.self, forKey: .followersCount) ?? 0
         followingCount = try container.decodeIfPresent(Int.self, forKey: .followingCount) ?? 0
+        bio = try container.decodeIfPresent(String.self, forKey: .bio)
     }
     
     // MARK: - Initialization
-    init(id: String, username: String, email: String, createdAt: Date, profilePicUrl: String? = nil, isBusiness: Bool = false, selectedAlgorithms: [String] = [], followersCount: Int = 0, followingCount: Int = 0) {
+    init(id: String, username: String, email: String, createdAt: Date, profilePicUrl: String? = nil, isBusiness: Bool = false, selectedAlgorithms: [String] = [], followersCount: Int = 0, followingCount: Int = 0, bio: String? = nil) {
         self.id = id
         self.username = username
         self.email = email
@@ -53,6 +56,7 @@ class User: Identifiable, Codable, Hashable {
         self.selectedAlgorithms = selectedAlgorithms
         self.followersCount = followersCount
         self.followingCount = followingCount
+        self.bio = bio
     }
     
     // Create a User from Firebase Auth user
@@ -66,7 +70,8 @@ class User: Identifiable, Codable, Hashable {
             isBusiness: false,
             selectedAlgorithms: [],
             followersCount: 0,
-            followingCount: 0
+            followingCount: 0,
+            bio: nil
         )
     }
     
@@ -87,7 +92,8 @@ class User: Identifiable, Codable, Hashable {
             isBusiness: data["isBusiness"] as? Bool ?? false,
             selectedAlgorithms: data["selectedAlgorithms"] as? [String] ?? [],
             followersCount: data["followersCount"] as? Int ?? 0,
-            followingCount: data["followingCount"] as? Int ?? 0
+            followingCount: data["followingCount"] as? Int ?? 0,
+            bio: data["bio"] as? String
         )
     }
     
@@ -101,7 +107,8 @@ class User: Identifiable, Codable, Hashable {
         isBusiness: false,
         selectedAlgorithms: [],
         followersCount: 0,
-        followingCount: 0
+        followingCount: 0,
+        bio: nil
     )
     
     // MARK: - Hashable & Equatable
@@ -130,6 +137,10 @@ extension User {
         
         if let profilePicUrl = profilePicUrl {
             data["profilePicUrl"] = profilePicUrl
+        }
+        
+        if let bio = bio {
+            data["bio"] = bio
         }
         
         return data
