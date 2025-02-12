@@ -607,25 +607,19 @@ final class VideoViewModel: ObservableObject {
             // Process videos one by one with proper error handling
             for document in snapshot.documents {
                 debugLog("📝 Processing video document: \(document.documentID)")
-                do {
-                    guard var video = Video.fromFirestore(document.data(), id: document.documentID) else {
-                        debugLog("❌ Failed to parse video document: \(document.documentID)")
-                        continue
-                    }
-                    
-                    // Safely fetch user data
-                    if let userData = await fetchUserForVideo(video) {
-                        video.user = userData
-                        debugLog("👤 Added user data to video: \(document.documentID)")
-                    }
-                    
-                    userVideos.append(video)
-                    debugLog("✅ Successfully processed video: \(document.documentID)")
-                } catch {
-                    debugLog("⚠️ Error processing video \(document.documentID): \(error.localizedDescription)")
-                    // Continue with next video instead of crashing
+                guard var video = Video.fromFirestore(document.data(), id: document.documentID) else {
+                    debugLog("❌ Failed to parse video document: \(document.documentID)")
                     continue
                 }
+                
+                // Safely fetch user data
+                if let userData = await fetchUserForVideo(video) {
+                    video.user = userData
+                    debugLog("👤 Added user data to video: \(document.documentID)")
+                }
+                    
+                userVideos.append(video)
+                debugLog("✅ Successfully processed video: \(document.documentID)")
             }
             
             // Sort in memory instead of using Firestore ordering
