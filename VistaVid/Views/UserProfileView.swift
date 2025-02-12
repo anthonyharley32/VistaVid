@@ -93,10 +93,8 @@ struct UserProfileView: View {
                 VStack(spacing: 15) {
                     CircularProfileImage(user: user, size: 100)
                     
-                    HStack(spacing: 40) {
-                        Text("@\(user.username)")
-                            .font(.system(size: 16, weight: .semibold))
-                    }
+                    Text(user.username)
+                        .font(.system(size: 20, weight: .bold))
                     
                     if let bio = user.bio, !bio.isEmpty {
                         Text(bio)
@@ -128,118 +126,120 @@ struct UserProfileView: View {
                     .padding(.top, 5)
                     
                     // Action Buttons
-                    HStack(spacing: 12) {
-                        Button(action: {
-                            Task {
-                                do {
-                                    try await followModel.toggleFollow(for: user.id)
-                                } catch {
-                                    print("❌ Error toggling follow: \(error.localizedDescription)")
+                    if let currentUserId = Auth.auth().currentUser?.uid, currentUserId != user.id {
+                        HStack(spacing: 12) {
+                            Button(action: {
+                                Task {
+                                    do {
+                                        try await followModel.toggleFollow(for: user.id)
+                                    } catch {
+                                        print("❌ Error toggling follow: \(error.localizedDescription)")
+                                    }
                                 }
+                            }) {
+                                Text(followModel.isFollowing ? "Following" : "Follow")
+                                    .font(.system(size: 16, weight: .semibold))
+                                    .foregroundColor(followModel.isFollowing ? .secondary : .white)
+                                    .frame(width: 120, height: 36)
+                                    .background(followModel.isFollowing ? Color.gray.opacity(0.1) : Color.blue)
+                                    .cornerRadius(18)
                             }
-                        }) {
-                            Text(followModel.isFollowing ? "Following" : "Follow")
-                                .font(.system(size: 16, weight: .semibold))
-                                .foregroundColor(followModel.isFollowing ? .secondary : .white)
-                                .frame(width: 120, height: 36)
-                                .background(followModel.isFollowing ? Color.gray.opacity(0.1) : Color.blue)
-                                .cornerRadius(18)
-                        }
-                        
-                        Button(action: {
-                            navigateToChat = true
-                        }) {
-                            Image(systemName: "message")
-                                .font(.system(size: 16, weight: .semibold))
-                                .foregroundColor(.primary)
-                                .frame(width: 36, height: 36)
-                                .background(Color.gray.opacity(0.1))
-                                .cornerRadius(18)
-                        }
-                    }
-                    .padding(.top, 10)
-                }
-                .padding(.top, 20)
-                
-                // Tab Selector
-                HStack(spacing: 0) {
-                    ForEach(["Posts", "Likes"], id: \.self) { tab in
-                        Button(action: { 
-                            withAnimation { selectedTab = tab == "Posts" ? 0 : 1 }
-                        }) {
-                            VStack(spacing: 8) {
-                                Image(systemName: tab == "Posts" ? "grid" : "heart")
+                            
+                            Button(action: {
+                                navigateToChat = true
+                            }) {
+                                Image(systemName: "message")
                                     .font(.system(size: 20))
-                                Rectangle()
-                                    .fill(selectedTab == (tab == "Posts" ? 0 : 1) ? Color.primary : Color.clear)
-                                    .frame(height: 2)
+                                    .foregroundColor(.primary)
+                                    .frame(width: 36, height: 36)
+                                    .background(Color.gray.opacity(0.1))
+                                    .cornerRadius(18)
                             }
-                            .foregroundColor(selectedTab == (tab == "Posts" ? 0 : 1) ? .primary : .secondary)
                         }
-                        .frame(maxWidth: .infinity)
+                        .padding(.top, 5)
+                    }
+                    
+                    // Tab Selector
+                    HStack(spacing: 0) {
+                        ForEach(["Posts", "Likes"], id: \.self) { tab in
+                            Button(action: { 
+                                withAnimation { selectedTab = tab == "Posts" ? 0 : 1 }
+                            }) {
+                                VStack(spacing: 8) {
+                                    Image(systemName: tab == "Posts" ? "grid" : "heart")
+                                        .font(.system(size: 20))
+                                    Rectangle()
+                                        .fill(selectedTab == (tab == "Posts" ? 0 : 1) ? Color.primary : Color.clear)
+                                        .frame(height: 2)
+                                }
+                                .foregroundColor(selectedTab == (tab == "Posts" ? 0 : 1) ? .primary : .secondary)
+                            }
+                            .frame(maxWidth: .infinity)
+                        }
+                    }
+                    .padding(.horizontal)
+                    .padding(.top, 20)
+                    
+                    // Videos Grid
+                    if selectedTab == 0 {
+                        if userVideos.isEmpty {
+                            VStack(spacing: 12) {
+                                Image(systemName: "video.fill")
+                                    .font(.system(size: 40))
+                                    .foregroundColor(.secondary)
+                                    .padding(.top, 40)
+                                Text("No posts yet")
+                                    .font(.system(size: 16, weight: .medium))
+                                Text("Videos will appear here")
+                                    .font(.system(size: 14))
+                                    .foregroundColor(.secondary)
+                            }
+                            .frame(maxWidth: .infinity)
+                            .padding(.horizontal)
+                        } else {
+                            VideosGridSection(
+                                videos: userVideos,
+                                onVideoTap: { video in
+                                    selectedVideo = video
+                                    showVideoPlayer = true
+                                },
+                                onDelete: nil
+                            )
+                            .padding(.top, 2)
+                        }
+                    } else {
+                        if likedVideos.isEmpty {
+                            VStack(spacing: 12) {
+                                Image(systemName: "heart.fill")
+                                    .font(.system(size: 40))
+                                    .foregroundColor(.secondary)
+                                    .padding(.top, 40)
+                                Text("No likes yet")
+                                    .font(.system(size: 16, weight: .medium))
+                                Text("Liked videos will appear here")
+                                    .font(.system(size: 14))
+                                    .foregroundColor(.secondary)
+                            }
+                            .frame(maxWidth: .infinity)
+                            .padding(.horizontal)
+                        } else {
+                            VideosGridSection(
+                                videos: likedVideos,
+                                onVideoTap: { video in
+                                    selectedVideo = video
+                                    showVideoPlayer = true
+                                },
+                                onDelete: nil
+                            )
+                            .padding(.top, 2)
+                        }
                     }
                 }
-                .padding(.horizontal)
                 .padding(.top, 20)
-                
-                // Videos Grid
-                if selectedTab == 0 {
-                    if userVideos.isEmpty {
-                        VStack(spacing: 12) {
-                            Image(systemName: "video.fill")
-                                .font(.system(size: 40))
-                                .foregroundColor(.secondary)
-                                .padding(.top, 40)
-                            Text("No posts yet")
-                                .font(.system(size: 16, weight: .medium))
-                            Text("Videos will appear here")
-                                .font(.system(size: 14))
-                                .foregroundColor(.secondary)
-                        }
-                        .frame(maxWidth: .infinity)
-                        .padding(.horizontal)
-                    } else {
-                        VideosGridSection(
-                            videos: userVideos,
-                            onVideoTap: { video in
-                                selectedVideo = video
-                                showVideoPlayer = true
-                            },
-                            onDelete: nil
-                        )
-                        .padding(.top, 2)
-                    }
-                } else {
-                    if likedVideos.isEmpty {
-                        VStack(spacing: 12) {
-                            Image(systemName: "heart.fill")
-                                .font(.system(size: 40))
-                                .foregroundColor(.secondary)
-                                .padding(.top, 40)
-                            Text("No likes yet")
-                                .font(.system(size: 16, weight: .medium))
-                            Text("Liked videos will appear here")
-                                .font(.system(size: 14))
-                                .foregroundColor(.secondary)
-                        }
-                        .frame(maxWidth: .infinity)
-                        .padding(.horizontal)
-                    } else {
-                        VideosGridSection(
-                            videos: likedVideos,
-                            onVideoTap: { video in
-                                selectedVideo = video
-                                showVideoPlayer = true
-                            },
-                            onDelete: nil
-                        )
-                        .padding(.top, 2)
-                    }
-                }
             }
         }
         .navigationBarTitleDisplayMode(.inline)
-        .navigationTitle("@\(user.username)")
+        .navigationTitle(user.username)
         .navigationDestination(isPresented: $navigateToChat) {
             ChatView(recipient: user)
         }

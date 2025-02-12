@@ -35,11 +35,6 @@ struct ProfileView: View {
                                     .multilineTextAlignment(.center)
                                     .padding(.horizontal)
                             }
-                            
-                            HStack(spacing: 40) {
-                                Text("@\(user.username)")
-                                    .font(.system(size: 16, weight: .semibold))
-                            }
                         }
                         
                         // Stats Row

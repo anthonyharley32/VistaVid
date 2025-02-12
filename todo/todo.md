@@ -10,14 +10,14 @@
 [ ] settings clean up - UI is a little weird and there's a lot of bricked links on @settingsView like the privacy policy.
 [ ] Algorithm Accountability - currently just UI on settings. Improve UI/UX and implement funcitonality.
 [ ] Content Moderation
-[ ] following = 0
 [ ] settings button delayed visibility
 [ ] Accent color
 [ ] Let videos show right after upload 
-[ ] Unfollow
 [ ] repeat username - on @profileView, there is the main username and a second one showing with an @ sign. Remove this second one.
-[ ] instant follow stats
+[ ] follow self on follower list -> self
 [-] Community page shows blank on long press
+[X] instant follow stats
+[X] Unfollow
 [X] Bio
 [X] offline
 [X] Redo hands free mode
