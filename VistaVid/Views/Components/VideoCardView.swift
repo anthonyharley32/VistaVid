@@ -185,13 +185,13 @@ private struct VideoInfoView: View {
     
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
-            Text(video.description)
-                .font(.subheadline)
-                .lineLimit(2)
-            
             if let user = video.user {
                 CreatorInfoView(user: user, onProfileTap: onProfileTap)
             }
+            
+            Text(video.description)
+                .font(.subheadline)
+                .lineLimit(2)
         }
         .foregroundStyle(.white)
         .shadow(color: .black.opacity(0.3), radius: 8, x: 0, y: 4)
@@ -229,33 +229,38 @@ private struct ProfileNavigationLink: View {
         let _ = print("🎯 [ProfileNavigationLink] Target user ID: \(user.id)")
         let _ = print("🖼️ [ProfileNavigationLink] Profile picture URL: \(user.profilePicUrl ?? "nil")")
         
-        NavigationLink {
-            Group {
-                if user.id == Auth.auth().currentUser?.uid {
-                    let _ = print("🏠 [ProfileNavigationLink] Navigating to own profile")
-                    ProfileView(user: user, authModel: AuthenticationViewModel())
-                } else {
+        Group {
+            if user.id == Auth.auth().currentUser?.uid {
+                Button {
+                    let _ = print("🏠 [ProfileNavigationLink] Navigating to own profile via tab")
+                    NotificationCenter.default.post(name: NSNotification.Name("NavigateToYouTab"), object: nil)
+                } label: {
+                    profileImage
+                }
+            } else {
+                NavigationLink {
                     let _ = print("👥 [ProfileNavigationLink] Navigating to user profile")
                     UserProfileView(user: user)
+                } label: {
+                    profileImage
                 }
             }
-        } label: {
-            AsyncImage(url: URL(string: user.profilePicUrl ?? "")) { image in
-                image
-                    .resizable()
-                    .scaledToFill()
-            } placeholder: {
-                Image(systemName: "person.circle.fill")
-                    .resizable()
-                    .foregroundStyle(.white)
-            }
-            .frame(width: 32, height: 32)
-            .clipShape(Circle())
-            .overlay(Circle().stroke(.white, lineWidth: 1))
         }
-        .simultaneousGesture(TapGesture().onEnded {
-            print("📸 [ProfileNavigationLink] Profile image tapped and navigation triggered")
-        })
+    }
+    
+    private var profileImage: some View {
+        AsyncImage(url: URL(string: user.profilePicUrl ?? "")) { image in
+            image
+                .resizable()
+                .scaledToFill()
+        } placeholder: {
+            Image(systemName: "person.circle.fill")
+                .resizable()
+                .foregroundStyle(.white)
+        }
+        .frame(width: 32, height: 32)
+        .clipShape(Circle())
+        .overlay(Circle().stroke(.white, lineWidth: 1))
     }
 }
 

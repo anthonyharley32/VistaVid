@@ -4,7 +4,7 @@ import AVKit
 import FirebaseFirestore
 
 struct UserProfileView: View {
-    @State private var videoModel = VideoViewModel()
+    @StateObject private var videoModel = VideoViewModel()
     @State private var followModel = FollowViewModel()
     @State private var messageModel = MessageViewModel()
     @State private var userVideos: [Video] = []
@@ -48,13 +48,15 @@ struct UserProfileView: View {
         .task {
             if let userId = userId {
                 await loadUser(userId: userId)
+            } else if let user = user {
+                // Only load content directly if we have a user already
+                await loadContent()
             }
         }
     }
     
     private func loadUser(userId: String) async {
         isLoading = true
-        defer { isLoading = false }
         
         do {
             let db = Firestore.firestore()
@@ -63,10 +65,14 @@ struct UserProfileView: View {
             if let userData = document.data(),
                let user = User.fromFirestore(userData, id: userId) {
                 loadedUser = user
+                // Now that we have the user, load their content
+                await loadContent()
             }
         } catch {
             print("❌ Error loading user: \(error)")
         }
+        
+        isLoading = false
     }
     
     @ViewBuilder
@@ -215,7 +221,6 @@ struct UserProfileView: View {
         .onAppear {
             print("👤 UserProfileView appeared for user: \(user.username)")
             Task {
-                await loadContent()
                 followModel.startObservingFollowStatus(for: user.id)
             }
         }
@@ -225,26 +230,36 @@ struct UserProfileView: View {
     }
     
     private func loadContent() async {
-        guard let user = displayUser else { return }
+        print("📥 [UserProfileView] Starting loadContent")
+        guard let user = displayUser else {
+            print("❌ [UserProfileView] No display user available")
+            return
+        }
+        print("👤 [UserProfileView] Loading content for user: \(user.username) (ID: \(user.id))")
         
-        print("🎥 Fetching videos for user: \(user.id)")
+        // Load user videos
+        print("🎥 [UserProfileView] Starting to fetch user videos")
         if let videos = try? await videoModel.fetchUserVideos(userId: user.id) {
-            userVideos = videos
-            print("✅ Successfully fetched \(videos.count) videos for user: \(user.username)")
+            print("📊 [UserProfileView] User videos received: \(videos.count) videos")
+            await MainActor.run {
+                userVideos = videos
+            }
+            print("✅ [UserProfileView] Updated userVideos state with \(videos.count) videos")
         } else {
-            print("❌ Failed to fetch videos for user: \(user.username)")
+            print("❌ [UserProfileView] Failed to fetch user videos")
         }
         
-        print("❤️ Starting to fetch liked videos for user: \(user.id)")
+        // Load liked videos
+        print("❤️ [UserProfileView] Starting to fetch liked videos")
         do {
             let liked = try await videoModel.fetchLikedVideos(userId: user.id)
-            print("📊 Liked videos data received: \(liked.count) videos")
-            print("🔍 First few liked video IDs: \(liked.prefix(3).map { $0.id }.joined(separator: ", "))")
-            likedVideos = liked
-            print("✅ Successfully updated likedVideos state with \(likedVideos.count) videos")
+            print("📊 [UserProfileView] Liked videos received: \(liked.count) videos")
+            await MainActor.run {
+                likedVideos = liked
+            }
+            print("✅ [UserProfileView] Updated likedVideos state with \(liked.count) videos")
         } catch {
-            print("❌ Error fetching liked videos: \(error.localizedDescription)")
-            print("🔬 Detailed error: \(error)")
+            print("❌ [UserProfileView] Error fetching liked videos: \(error.localizedDescription)")
         }
     }
 }
