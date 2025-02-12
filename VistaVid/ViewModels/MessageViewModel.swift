@@ -1,18 +1,19 @@
 import Foundation
 import FirebaseFirestore
 import FirebaseAuth
+import Combine
 
-@Observable final class MessageViewModel {
+final class MessageViewModel: ObservableObject {
     // MARK: - Properties
     private let db: Firestore
     
     private var messagesListener: ListenerRegistration?
     private var threadsListener: ListenerRegistration?
     
-    var messages: [Message] = []
-    var chatThreads: [ChatThread] = []
-    var isLoading = false
-    var error: Error?
+    @Published var messages: [Message] = []
+    @Published var chatThreads: [ChatThread] = []
+    @Published var isLoading = false
+    @Published var error: Error?
     
     // MARK: - Initialization
     init() {

@@ -5,8 +5,8 @@ import FirebaseFirestore
 
 struct UserProfileView: View {
     @StateObject private var videoModel = VideoViewModel()
-    @State private var followModel = FollowViewModel()
-    @State private var messageModel = MessageViewModel()
+    @StateObject private var followModel = FollowViewModel()
+    @StateObject private var messageModel = MessageViewModel()
     @State private var userVideos: [Video] = []
     @State private var likedVideos: [Video] = []
     @State private var navigateToChat = false
@@ -53,6 +53,7 @@ struct UserProfileView: View {
             } else if let user = user {
                 // Only load content directly if we have a user already
                 await loadContent()
+                followModel.startObservingFollowStatus(for: user.id)
             }
         }
         .sheet(isPresented: $showFollowList) {
@@ -75,6 +76,7 @@ struct UserProfileView: View {
                 loadedUser = user
                 // Now that we have the user, load their content
                 await loadContent()
+                followModel.startObservingFollowStatus(for: userId)
             }
         } catch {
             print("❌ Error loading user: \(error)")

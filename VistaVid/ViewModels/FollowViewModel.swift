@@ -31,6 +31,10 @@ final class FollowViewModel: ObservableObject {
     
     // MARK: - Public Methods
     func startObservingFollowStatus(for userId: String) {
+        print("🔄 [FollowViewModel] Starting observation for user: \(userId)")
+        // Clean up existing listeners first
+        cleanup()
+        
         guard let currentUserId = Auth.auth().currentUser?.uid else { return }
         
         // Listen for follow status
@@ -43,7 +47,9 @@ final class FollowViewModel: ObservableObject {
                     return
                 }
                 
-                self?.isFollowing = !(snapshot?.documents.isEmpty ?? true)
+                let following = !(snapshot?.documents.isEmpty ?? true)
+                print("👥 [FollowViewModel] Follow status updated: \(following)")
+                self?.isFollowing = following
             }
         
         // Listen for followers count
@@ -55,7 +61,9 @@ final class FollowViewModel: ObservableObject {
                     return
                 }
                 
-                self?.followersCount = snapshot?.documents.count ?? 0
+                let count = snapshot?.documents.count ?? 0
+                print("👥 [FollowViewModel] Updated followers count: \(count)")
+                self?.followersCount = count
             }
             
         // Listen for following count
@@ -67,8 +75,9 @@ final class FollowViewModel: ObservableObject {
                     return
                 }
                 
-                self?.followingCount = snapshot?.documents.count ?? 0
-                print("👥 Updated following count: \(snapshot?.documents.count ?? 0)")
+                let count = snapshot?.documents.count ?? 0
+                print("👥 [FollowViewModel] Updated following count: \(count)")
+                self?.followingCount = count
             }
     }
     
@@ -89,11 +98,23 @@ final class FollowViewModel: ObservableObject {
         if isFollowing {
             // Unfollow
             try await db.collection("follows").document(followId).delete()
+            // Update UI immediately
+            isFollowing = false
             print("✅ Successfully unfollowed user: \(userId)")
         } else {
+            // Check if already following
+            let doc = try await db.collection("follows").document(followId).getDocument()
+            guard !doc.exists else {
+                print("⚠️ Already following user: \(userId)")
+                isFollowing = true
+                return
+            }
+            
             // Follow
             let follow = Follow(id: followId, followerId: currentUserId, followingId: userId)
             try await db.collection("follows").document(followId).setData(follow.toDictionary())
+            // Update UI immediately
+            isFollowing = true
             print("✅ Successfully followed user: \(userId)")
         }
     }
