@@ -280,6 +280,10 @@ final class VideoViewModel: ObservableObject {
                 debugLog("🎉 Upload process completed successfully")
             }
             
+            // After successful upload, refresh the feed
+            debugLog("🔄 Refreshing video feed after upload")
+            await fetchInitialVideos()
+            
         } catch {
             debugLog("❌ Error uploading video: \(error)")
             debugLog("❌ Detailed error: \(String(describing: error))")

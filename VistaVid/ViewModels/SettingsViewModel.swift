@@ -77,9 +77,9 @@ import AVFoundation
             print("👁️ Left wink detected - Going to previous video")
             DispatchQueue.main.async {
                 NotificationCenter.default.post(
-                    name: NSNotification.Name("NavigateToPreviousVideo"),
+                    name: NSNotification.Name("NavigateVideo"),
                     object: nil,
-                    userInfo: ["direction": "up"]
+                    userInfo: ["direction": "previous"]
                 )
             }
         }
@@ -89,9 +89,9 @@ import AVFoundation
             print("👁️ Right wink detected - Going to next video")
             DispatchQueue.main.async {
                 NotificationCenter.default.post(
-                    name: NSNotification.Name("NavigateToNextVideo"),
+                    name: NSNotification.Name("NavigateVideo"),
                     object: nil,
-                    userInfo: ["direction": "down"]
+                    userInfo: ["direction": "next"]
                 )
             }
         }
@@ -101,9 +101,8 @@ import AVFoundation
             print("👁️ Both eyes blink detected - Toggling play/pause")
             DispatchQueue.main.async {
                 NotificationCenter.default.post(
-                    name: NSNotification.Name("TogglePlayback"),
-                    object: nil,
-                    userInfo: nil
+                    name: NSNotification.Name("ToggleVideoPlayback"),
+                    object: nil
                 )
             }
         }

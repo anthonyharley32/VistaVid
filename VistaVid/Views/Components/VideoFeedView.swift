@@ -110,36 +110,51 @@ struct VideoFeedView: View {
                 
                 GeometryReader { geometry in
                     ZStack {
-                        // Videos
-                        ForEach(Array(viewModel.videos.enumerated()), id: \.element.id) { index, video in
-                            if shouldRenderVideo(at: index) {
-                                VideoCardContainer(
-                                    video: video,
-                                    index: index,
-                                    currentIndex: viewModel.currentIndex,
-                                    dragOffset: dragOffset,
-                                    onDoubleTap: { position in
-                                        viewModel.createHeart(at: position)
-                                    },
-                                    isPlaying: viewModel.isPlaying,
-                                    onProfileTap: navigateToProfile
-                                )
+                        if viewModel.videos.isEmpty {
+                            VStack(spacing: 12) {
+                                Image(systemName: "camera.circle.fill")
+                                    .font(.system(size: 50))
+                                    .symbolVariant(.slash)
+                                    .foregroundColor(.black)
+                                
+                                Text("No videos to show")
+                                    .font(.title3)
+                                    .foregroundColor(.black)
                             }
-                        }
-                        
-                        // Hearts
-                        ForEach(viewModel.hearts) { heart in
-                            Image(systemName: "heart.fill")
-                                .font(.system(size: 100))
-                                .foregroundStyle(
-                                    LinearGradient(
-                                        colors: [.pink, .red],
-                                        startPoint: .topLeading,
-                                        endPoint: .bottomTrailing
+                            .frame(maxWidth: .infinity, maxHeight: .infinity)
+                            .background(.ultraThinMaterial)
+                        } else {
+                            // Videos
+                            ForEach(Array(viewModel.videos.enumerated()), id: \.element.id) { index, video in
+                                if shouldRenderVideo(at: index) {
+                                    VideoCardContainer(
+                                        video: video,
+                                        index: index,
+                                        currentIndex: viewModel.currentIndex,
+                                        dragOffset: dragOffset,
+                                        onDoubleTap: { position in
+                                            viewModel.createHeart(at: position)
+                                        },
+                                        isPlaying: viewModel.isPlaying,
+                                        onProfileTap: navigateToProfile
                                     )
-                                )
-                                .shadow(color: .black.opacity(0.3), radius: 8, x: 0, y: 4)
-                                .position(heart.position)
+                                }
+                            }
+                            
+                            // Hearts
+                            ForEach(viewModel.hearts) { heart in
+                                Image(systemName: "heart.fill")
+                                    .font(.system(size: 100))
+                                    .foregroundStyle(
+                                        LinearGradient(
+                                            colors: [.pink, .red],
+                                            startPoint: .topLeading,
+                                            endPoint: .bottomTrailing
+                                        )
+                                    )
+                                    .shadow(color: .black.opacity(0.3), radius: 8, x: 0, y: 4)
+                                    .position(heart.position)
+                            }
                         }
                     }
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -193,12 +208,60 @@ struct VideoFeedView: View {
             }
             .onAppear {
                 viewModel.isPlaying = true
+                setupNotificationObservers()
             }
             .onDisappear {
                 viewModel.isPlaying = false
+                removeNotificationObservers()
             }
             .preferredColorScheme(.dark)
         }
+    }
+    
+    // MARK: - Notification Handling
+    private func setupNotificationObservers() {
+        print("👁️ Setting up hands-free mode notification observers")
+        NotificationCenter.default.addObserver(
+            forName: NSNotification.Name("NavigateVideo"),
+            object: nil,
+            queue: .main
+        ) { notification in
+            guard let direction = notification.userInfo?["direction"] as? String else { return }
+            
+            let screenHeight = UIScreen.main.bounds.height
+            withAnimation(.easeInOut(duration: 0.25)) {
+                if direction == "previous" && viewModel.currentIndex > 0 {
+                    print("👁️ Navigating to previous video")
+                    viewModel.currentIndex -= 1
+                } else if direction == "next" && viewModel.currentIndex < viewModel.videos.count - 1 {
+                    print("👁️ Navigating to next video")
+                    viewModel.currentIndex += 1
+                }
+            }
+        }
+        
+        NotificationCenter.default.addObserver(
+            forName: NSNotification.Name("ToggleVideoPlayback"),
+            object: nil,
+            queue: .main
+        ) { _ in
+            print("👁️ Toggling video playback")
+            viewModel.isPlaying.toggle()
+        }
+    }
+    
+    private func removeNotificationObservers() {
+        print("👁️ Removing hands-free mode notification observers")
+        NotificationCenter.default.removeObserver(
+            self,
+            name: NSNotification.Name("NavigateVideo"),
+            object: nil
+        )
+        NotificationCenter.default.removeObserver(
+            self,
+            name: NSNotification.Name("ToggleVideoPlayback"),
+            object: nil
+        )
     }
     
     private func shouldRenderVideo(at index: Int) -> Bool {

@@ -41,7 +41,7 @@ class FYPViewModel: ObservableObject {
             
             if videoModel.videos.isEmpty {
                 print("⚠️ [FYPViewModel] No videos found in database")
-                self.error = "No videos available at the moment. Please try again later."
+                self.error = "No videos to show"
                 return
             }
             
@@ -214,22 +214,18 @@ struct FYPView: View {
                     }
                     
                     if let error = viewModel.error {
-                        VStack {
-                            Text(error)
-                                .foregroundColor(.red)
-                                .padding()
-                                .background(.ultraThinMaterial)
-                                .cornerRadius(12)
-                                .padding()
+                        VStack(spacing: 12) {
+                            Image(systemName: "camera.circle.fill")
+                                .font(.system(size: 50))
+                                .symbolVariant(.slash)
+                                .foregroundColor(.black)
                             
-                            Button("Retry") {
-                                Task {
-                                    await viewModel.loadInitialVideos()
-                                }
-                            }
-                            .buttonStyle(.borderedProminent)
-                            .tint(.red)
+                            Text(error)
+                                .font(.title3)
+                                .foregroundColor(.black)
                         }
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                        .background(.ultraThinMaterial)
                         .zIndex(1)
                     }
                 }
@@ -250,11 +246,58 @@ struct FYPView: View {
             }
             .onAppear {
                 print("🏠 [FYP] View appeared")
+                setupNotificationObservers()
             }
             .onDisappear {
                 print("🏠 [FYP] View disappeared")
+                removeNotificationObservers()
             }
         }
+    }
+    
+    // MARK: - Notification Handling
+    private func setupNotificationObservers() {
+        print("👁️ Setting up hands-free mode notification observers in FYPView")
+        NotificationCenter.default.addObserver(
+            forName: NSNotification.Name("NavigateVideo"),
+            object: nil,
+            queue: .main
+        ) { notification in
+            guard let direction = notification.userInfo?["direction"] as? String else { return }
+            
+            withAnimation(.easeInOut(duration: 0.25)) {
+                if direction == "previous" && viewModel.currentIndex > 0 {
+                    print("👁️ Navigating to previous video")
+                    viewModel.currentIndex -= 1
+                } else if direction == "next" && viewModel.currentIndex < viewModel.videos.count - 1 {
+                    print("👁️ Navigating to next video")
+                    viewModel.currentIndex += 1
+                }
+            }
+        }
+        
+        NotificationCenter.default.addObserver(
+            forName: NSNotification.Name("ToggleVideoPlayback"),
+            object: nil,
+            queue: .main
+        ) { _ in
+            print("👁️ Toggling video playback")
+            viewModel.isPlaying.toggle()
+        }
+    }
+    
+    private func removeNotificationObservers() {
+        print("👁️ Removing hands-free mode notification observers from FYPView")
+        NotificationCenter.default.removeObserver(
+            self,
+            name: NSNotification.Name("NavigateVideo"),
+            object: nil
+        )
+        NotificationCenter.default.removeObserver(
+            self,
+            name: NSNotification.Name("ToggleVideoPlayback"),
+            object: nil
+        )
     }
     
     private func shouldRenderVideo(at index: Int) -> Bool {

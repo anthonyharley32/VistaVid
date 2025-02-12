@@ -39,6 +39,9 @@ struct VideoCardView: View {
         .task {
             await checkLikeStatus()
         }
+        .onChange(of: isCurrentlyPlaying) { newValue in
+            print("👁️ [VideoCardView] Play state changed to: \(newValue)")
+        }
     }
     
     private func checkLikeStatus() async {

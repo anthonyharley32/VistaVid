@@ -8,7 +8,6 @@ struct VideoPlayerView: View {
     @StateObject private var videoModel = VideoViewModel()
     @State private var player: AVPlayer?
     @State private var playerLooper: AVPlayerLooper?
-    @State private var showPlayButton = false
     @State private var isPlaying = true
     @State private var hasTrackedView = false
     @State private var isLoading = true
@@ -127,65 +126,17 @@ struct VideoPlayerView: View {
                 CustomVideoPlayer(player: player)
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
                     .edgesIgnoringSafeArea(.all)
-                
-                if showPlayButton || !isPlaying {
-                    Image(systemName: isPlaying ? "pause.fill" : "play.fill")
-                        .font(.system(size: 50))
-                        .foregroundStyle(.white.opacity(0.8))
-                        .transition(.opacity)
-                }
             }
         }
         .contentShape(Rectangle())
         .onTapGesture {
-            withAnimation(.easeInOut(duration: 0.2)) {
-                showPlayButton = true
-            }
-            
             isPlaying.toggle()
-            if isPlaying {
-                player?.play()
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.8) {
-                    withAnimation(.easeInOut(duration: 0.2)) {
-                        showPlayButton = false
-                    }
-                }
-                
-                // Track view after 1 second of playback
-                if !hasTrackedView, let video = video {
-                    Task {
-                        try? await Task.sleep(nanoseconds: 1_000_000_000)
-                        if isPlaying {
-                            try? await videoModel.incrementViewCount(for: video)
-                            hasTrackedView = true
-                        }
-                    }
-                }
-            } else {
-                player?.pause()
-            }
+            handlePlayPauseChange()
         }
         .onChange(of: shouldPlay) { newValue in
+            print("👁️ [VideoPlayerView] shouldPlay changed to: \(newValue)")
             isPlaying = newValue
-            if newValue {
-                player?.play()
-                withAnimation(.easeInOut(duration: 0.2)) {
-                    showPlayButton = false
-                }
-                
-                // Track view after 1 second of playback
-                if !hasTrackedView, let video = video {
-                    Task {
-                        try? await Task.sleep(nanoseconds: 1_000_000_000)
-                        if isPlaying {
-                            try? await videoModel.incrementViewCount(for: video)
-                            hasTrackedView = true
-                        }
-                    }
-                }
-            } else {
-                player?.pause()
-            }
+            handlePlayPauseChange()
         }
         .task {
             // Configure URLCache to use our settings
@@ -199,7 +150,6 @@ struct VideoPlayerView: View {
             
             // Configure initial state
             isPlaying = shouldPlay
-            showPlayButton = !shouldPlay
         }
         .onDisappear {
             // Cleanup
@@ -208,6 +158,27 @@ struct VideoPlayerView: View {
             playerLooper = nil  // Release the looper
             player = nil
             NotificationCenter.default.removeObserver(self)
+        }
+    }
+    
+    private func handlePlayPauseChange() {
+        if isPlaying {
+            print("👁️ [VideoPlayerView] Playing video")
+            player?.play()
+            
+            // Track view after 1 second of playback
+            if !hasTrackedView, let video = video {
+                Task {
+                    try? await Task.sleep(nanoseconds: 1_000_000_000)
+                    if isPlaying {
+                        try? await videoModel.incrementViewCount(for: video)
+                        hasTrackedView = true
+                    }
+                }
+            }
+        } else {
+            print("👁️ [VideoPlayerView] Pausing video")
+            player?.pause()
         }
     }
 }
