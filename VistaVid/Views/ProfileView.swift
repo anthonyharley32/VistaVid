@@ -66,7 +66,7 @@ struct ProfileView: View {
                     if selectedTab == 0 {
                         if userVideos.isEmpty {
                             VStack(spacing: 12) {
-                                Image(systemName: "video.fill")
+                                Image(systemName: "play.fill")
                                     .font(.system(size: 40))
                                     .foregroundColor(.secondary)
                                     .padding(.top, 40)
@@ -80,7 +80,6 @@ struct ProfileView: View {
                             .padding(.horizontal)
                         } else {
                             VideosGridSection(
-                                title: "Posts",
                                 videos: userVideos,
                                 onVideoTap: { video in
                                     // Handle video tap
@@ -108,7 +107,6 @@ struct ProfileView: View {
                             .padding(.horizontal)
                         } else {
                             VideosGridSection(
-                                title: "Likes",
                                 videos: likedVideos,
                                 onVideoTap: { video in
                                     // Handle video tap

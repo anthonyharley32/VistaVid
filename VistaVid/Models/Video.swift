@@ -194,11 +194,12 @@ extension Video {
                 likes: countsDict["likes"] ?? 0,
                 shares: countsDict["shares"] ?? 0,
                 comments: countsDict["comments"] ?? 0,
-                saves: countsDict["saves"] ?? 0
+                saves: countsDict["saves"] ?? 0,
+                views: countsDict["views"] ?? 0
             )
         } else {
             print("⚠️ [Video Parser] No interactionCounts found, using defaults")
-            interactionCounts = InteractionCounts(likes: 0, shares: 0, comments: 0, saves: 0)
+            interactionCounts = InteractionCounts(likes: 0, shares: 0, comments: 0, saves: 0, views: 0)
         }
         
         // Parse business data with logging
@@ -266,7 +267,8 @@ extension Video {
                 "likes": interactionCounts.likes,
                 "shares": interactionCounts.shares,
                 "comments": interactionCounts.comments,
-                "saves": interactionCounts.saves
+                "saves": interactionCounts.saves,
+                "views": interactionCounts.views
             ],
             "createdAt": Timestamp(date: createdAt),
             "algorithmTags": algorithmTags,
@@ -307,6 +309,15 @@ extension Video {
         var shares: Int
         var comments: Int
         var saves: Int
+        var views: Int
+        
+        init(likes: Int = 0, shares: Int = 0, comments: Int = 0, saves: Int = 0, views: Int = 0) {
+            self.likes = likes
+            self.shares = shares
+            self.comments = comments
+            self.saves = saves
+            self.views = views
+        }
     }
 }
 
@@ -322,7 +333,13 @@ extension Video {
             genre: "Pop",
             uploadTimestamp: ISO8601DateFormatter().string(from: Date()),
             preprocessedTutorial: false,
-            interactionCounts: InteractionCounts(likes: 0, shares: 0, comments: 0, saves: 0)
+            interactionCounts: InteractionCounts(
+                likes: 0,
+                shares: 0,
+                comments: 0,
+                saves: 0,
+                views: 0
+            )
         )
     }
 } 

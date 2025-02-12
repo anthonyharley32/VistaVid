@@ -3,31 +3,22 @@ import AVKit
 
 // MARK: - Videos Grid Section
 struct VideosGridSection: View {
-    let title: String
     let videos: [Video]
     let onVideoTap: (Video) -> Void
     let onDelete: ((Video) -> Void)?
     
     var body: some View {
-        VStack(alignment: .leading) {
-            if !title.isEmpty {
-                Text(title)
-                    .font(.headline)
-                    .padding(.horizontal)
-            }
-            
-            LazyVGrid(columns: [
-                GridItem(.flexible(), spacing: 1),
-                GridItem(.flexible(), spacing: 1),
-                GridItem(.flexible(), spacing: 1)
-            ], spacing: 1) {
-                ForEach(videos) { video in
-                    VideoThumbnail(
-                        video: video,
-                        onTap: { onVideoTap(video) },
-                        onDelete: onDelete != nil ? { onDelete?(video) } : nil
-                    )
-                }
+        LazyVGrid(columns: [
+            GridItem(.flexible(), spacing: 1),
+            GridItem(.flexible(), spacing: 1),
+            GridItem(.flexible(), spacing: 1)
+        ], spacing: 1) {
+            ForEach(videos) { video in
+                VideoThumbnail(
+                    video: video,
+                    onTap: { onVideoTap(video) },
+                    onDelete: onDelete != nil ? { onDelete?(video) } : nil
+                )
             }
         }
     }

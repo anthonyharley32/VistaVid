@@ -73,8 +73,8 @@ private struct VideoCardContainer: View {
             onProfileTap: onProfileTap
         )
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .offset(y: CGFloat(index - currentIndex) * UIScreen.main.bounds.height + dragOffset)
-        .frame(maxHeight: .infinity, alignment: .center)
+        .animation(.easeInOut(duration: 0.25), value: currentIndex)
+        .offset(y: (CGFloat(index - currentIndex) * UIScreen.main.bounds.height) + dragOffset)
     }
 }
 
@@ -200,7 +200,8 @@ struct VideoFeedView: View {
     }
     
     private func shouldRenderVideo(at index: Int) -> Bool {
-        abs(index - viewModel.currentIndex) <= 1
+        // Keep 2 videos loaded in each direction for smoother transitions
+        abs(index - viewModel.currentIndex) <= 2
     }
     
     private func createDragGesture(geometry: GeometryProxy) -> some Gesture {
@@ -233,12 +234,22 @@ struct VideoFeedView: View {
             )
             
             if newIndex != viewModel.currentIndex {
-                viewModel.currentIndex = newIndex
+                withAnimation(.easeInOut(duration: 0.25)) {
+                    viewModel.currentIndex = newIndex
+                    dragOffset = 0
+                }
+            } else {
+                withAnimation(.easeInOut(duration: 0.25)) {
+                    dragOffset = 0
+                }
+            }
+        } else {
+            withAnimation(.easeInOut(duration: 0.25)) {
+                dragOffset = 0
             }
         }
         
-        dragOffset = 0
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.25) {
             isAnimating = false
         }
     }

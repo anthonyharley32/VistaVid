@@ -182,7 +182,8 @@ struct FYPView: View {
                             onProfileTap: { _ in }
                         )
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
-                        .offset(y: CGFloat(index - viewModel.currentIndex) * geometry.size.height + dragOffset)
+                        .animation(.easeInOut(duration: 0.25), value: viewModel.currentIndex)
+                        .offset(y: (CGFloat(index - viewModel.currentIndex) * geometry.size.height) + dragOffset)
                     }
                 }
                 
@@ -235,7 +236,7 @@ struct FYPView: View {
             .clipped()
             .transaction { transaction in
                 transaction.animation = isAnimating ? 
-                    .interpolatingSpring(stiffness: 200, damping: 25) : nil
+                    .easeInOut(duration: 0.25) : nil
             }
             .gesture(createDragGesture(geometry: geometry))
             .offset(y: -30)
@@ -255,7 +256,8 @@ struct FYPView: View {
     }
     
     private func shouldRenderVideo(at index: Int) -> Bool {
-        let shouldRender = abs(index - viewModel.currentIndex) <= 1
+        // Keep 2 videos loaded in each direction for smoother transitions
+        let shouldRender = abs(index - viewModel.currentIndex) <= 2
         print("🎥 [FYP] Checking if should render video at index \(index): \(shouldRender)")
         return shouldRender
     }
@@ -291,7 +293,10 @@ struct FYPView: View {
             
             if newIndex != viewModel.currentIndex {
                 print("🔄 [FYP] Changing current index from \(viewModel.currentIndex) to \(newIndex)")
-                viewModel.currentIndex = newIndex
+                withAnimation(.easeInOut(duration: 0.25)) {
+                    viewModel.currentIndex = newIndex
+                    dragOffset = 0
+                }
                 
                 // Only try to load more if we're not at the end
                 if !viewModel.hasReachedEnd && newIndex >= viewModel.videos.count - 2 {
@@ -300,11 +305,18 @@ struct FYPView: View {
                         await viewModel.loadMoreVideosIfNeeded()
                     }
                 }
+            } else {
+                withAnimation(.easeInOut(duration: 0.25)) {
+                    dragOffset = 0
+                }
+            }
+        } else {
+            withAnimation(.easeInOut(duration: 0.25)) {
+                dragOffset = 0
             }
         }
         
-        dragOffset = 0
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.25) {
             isAnimating = false
         }
     }
