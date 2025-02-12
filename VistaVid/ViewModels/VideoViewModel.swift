@@ -212,7 +212,13 @@ final class VideoViewModel: ObservableObject {
                 genre: "Other",
                 uploadTimestamp: ISO8601DateFormatter().string(from: Date()),
                 preprocessedTutorial: false,
-                interactionCounts: Video.InteractionCounts(likes: 0, shares: 0, comments: 0, saves: 0),
+                interactionCounts: Video.InteractionCounts(
+                    likes: 0,
+                    shares: 0,
+                    comments: 0,
+                    saves: 0,
+                    views: 0
+                ),
                 user: nil,
                 thumbnailUrl: nil,
                 createdAt: Date(),

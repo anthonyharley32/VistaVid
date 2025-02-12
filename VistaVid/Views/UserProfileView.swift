@@ -161,7 +161,6 @@ struct UserProfileView: View {
                         .padding(.horizontal)
                     } else {
                         VideosGridSection(
-                            title: "",
                             videos: userVideos,
                             onVideoTap: { video in
                                 selectedVideo = video
@@ -188,7 +187,6 @@ struct UserProfileView: View {
                         .padding(.horizontal)
                     } else {
                         VideosGridSection(
-                            title: "",
                             videos: likedVideos,
                             onVideoTap: { video in
                                 selectedVideo = video

@@ -32,10 +32,11 @@ struct VideoThumbnail: View {
                 VStack {
                     Spacer()
                     HStack {
-                        Image(systemName: "play.fill")
+                        Image(systemName: "play.circle.fill")
+                            .font(.system(size: 16))
                             .foregroundStyle(.white.opacity(0.6))
                         if let video = video {
-                            Text("❤️ \(video.interactionCounts.likes)")
+                            Text("\(video.interactionCounts.views)")
                                 .font(.caption)
                                 .foregroundStyle(.white.opacity(0.6))
                         }

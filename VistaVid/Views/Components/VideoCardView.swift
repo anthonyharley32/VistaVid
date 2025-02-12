@@ -10,21 +10,13 @@ struct VideoCardView: View {
     var body: some View {
         GeometryReader { geometry in
             ZStack {
-                // Video Background - blurred for edges
-                if let url = URL(string: video.videoUrl) {
-                    VideoPlayerView(url: url, shouldPlay: isCurrentlyPlaying)
-                        .blur(radius: 30)
-                        .frame(width: geometry.size.width, height: geometry.size.height)
-                        .ignoresSafeArea()
-                }
-                
-                // Main Video Player
+                // Single Video Player with optimized layout
                 if let url = URL(string: video.videoUrl) {
                     VideoPlayerView(url: url, shouldPlay: isCurrentlyPlaying)
                         .aspectRatio(contentMode: .fill)
                         .frame(width: geometry.size.width, height: geometry.size.height)
                         .clipped()
-                        .ignoresSafeArea()
+                        .background(Color.black)
                 }
                 
                 // Gradient overlay for better text visibility
@@ -37,7 +29,6 @@ struct VideoCardView: View {
                     startPoint: .top,
                     endPoint: .bottom
                 )
-                .ignoresSafeArea()
                 
                 // Double tap gesture for like
                 Color.clear
@@ -50,9 +41,7 @@ struct VideoCardView: View {
                     Spacer()
                     HStack(alignment: .bottom, spacing: 16) {
                         // Video info
-                        VStack(alignment: .leading, spacing: 8) {
-                            Text(video.title)
-                                .font(.headline)
+                        VStack(alignment: .leading, spacing: 6) {
                             Text(video.description)
                                 .font(.subheadline)
                                 .lineLimit(2)
@@ -76,13 +65,13 @@ struct VideoCardView: View {
                         Spacer()
                         
                         // Interaction buttons
-                        VStack(spacing: 24) {
+                        VStack(spacing: 20) {
                             VStack(spacing: 4) {
-                                Image(systemName: "heart.fill")
-                                    .font(.system(size: 30))
+                                Image(systemName: "play.circle.fill")
+                                    .font(.system(size: 24))
                                     .foregroundStyle(.white)
                                     .shadow(color: .black.opacity(0.3), radius: 8, x: 0, y: 4)
-                                Text("\(video.likesCount)")
+                                Text("\(video.interactionCounts.views)")
                                     .font(.caption)
                                     .bold()
                             }
@@ -108,7 +97,7 @@ struct VideoCardView: View {
                         .foregroundStyle(.white)
                     }
                     .padding(.horizontal, 16)
-                    .padding(.bottom, 90) // Add extra padding to clear the tab bar
+                    .padding(.bottom, 110) // Increased bottom padding to raise content higher
                 }
             }
         }
