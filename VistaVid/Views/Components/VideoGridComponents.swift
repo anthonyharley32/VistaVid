@@ -5,7 +5,6 @@ import AVKit
 struct VideosGridSection: View {
     let videos: [Video]
     let videoModel: VideoViewModel
-    @StateObject private var videoManager = VideoPlayerManager()
     
     private let columns = [
         GridItem(.flexible()),
@@ -16,14 +15,26 @@ struct VideosGridSection: View {
     var body: some View {
         LazyVGrid(columns: columns, spacing: 2) {
             ForEach(0..<videos.count, id: \.self) { index in
-                NavigationLink(destination: VideoPlayerView(video: videos[index], 
-                                                         index: index, 
-                                                         videoManager: videoManager, 
-                                                         isVisible: true,
-                                                         onUserTap: {})) {
+                NavigationLink(destination: VideoView(video: videos[index])) {
                     VideoThumbnail(video: videos[index])
                 }
             }
+        }
+    }
+}
+
+// Simple Video View
+struct VideoView: View {
+    let video: Video
+    
+    var body: some View {
+        if let url = video.url {
+            VideoPlayer(player: AVPlayer(url: url))
+                .ignoresSafeArea()
+        } else {
+            ContentUnavailableView("Video Unavailable",
+                systemImage: "video.slash",
+                description: Text("This video cannot be played"))
         }
     }
 }

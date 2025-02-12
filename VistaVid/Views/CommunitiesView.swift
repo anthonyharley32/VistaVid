@@ -450,6 +450,43 @@ extension Color {
     }
 }
 
+struct CommunityCell: View {
+    let community: Community
+    
+    var body: some View {
+        HStack(spacing: 12) {
+            if community.iconType == "emoji" {
+                Text(community.displayIcon)
+                    .font(.system(size: 30))
+                    .frame(width: 44, height: 44)
+                    .background(Color(hex: community.backgroundColor ?? "#007AFF")?.opacity(0.3))
+                    .clipShape(RoundedRectangle(cornerRadius: 8))
+            } else if let imageUrl = community.iconImageUrl {
+                AsyncImage(url: URL(string: imageUrl)) { image in
+                    image
+                        .resizable()
+                        .scaledToFill()
+                } placeholder: {
+                    Text(community.displayIcon)
+                        .font(.system(size: 30))
+                }
+                .frame(width: 44, height: 44)
+                .clipShape(RoundedRectangle(cornerRadius: 8))
+            }
+            
+            VStack(alignment: .leading, spacing: 4) {
+                Text(community.name)
+                    .font(.headline)
+                Text("\(community.membersCount) members")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+            }
+            Spacer()
+        }
+        .padding(.horizontal)
+    }
+}
+
 struct CommunitiesView: View {
     // MARK: - Properties
     let model: CommunitiesViewModel
@@ -630,8 +667,8 @@ struct CommunitiesView: View {
             LazyVStack(spacing: 12) {
                 ForEach(model.communities) { community in
                     ZStack {
-                        NavigationLink(destination: CommunityFeedView(community: community)) {
-                            EmptyView()
+                        NavigationLink(destination: PlaceholderCommunityFeedView()) {
+                            CommunityCell(community: community)
                         }
                         .opacity(0)
                         
@@ -683,6 +720,14 @@ struct CommunitiesView: View {
             }
             .padding(.vertical)
         }
+    }
+}
+
+struct PlaceholderCommunityFeedView: View {
+    var body: some View {
+        ContentUnavailableView("No Videos", 
+            systemImage: "video.slash",
+            description: Text("Community videos coming soon!"))
     }
 }
 

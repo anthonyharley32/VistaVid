@@ -4,8 +4,7 @@ import AVFoundation
 struct RecordingView: View {
     // MARK: - Properties
     @StateObject private var cameraManager = CameraManager()
-    @Environment(\.videoViewModel) private var videoViewModel
-    @Environment(\.videoPlayerManager) private var videoPlayerManager
+    @ObservedObject var videoViewModel: VideoViewModel
     @State private var showingDescriptionSheet = false
     @State private var description = ""
     @State private var selectedAlgorithmTags: [String] = []
@@ -115,8 +114,6 @@ struct RecordingView: View {
         .statusBar(hidden: true) // Hide status bar
         .task {
             print("🎥 [RecordingView]: View appeared, initializing camera")
-            // Clean up any playing videos
-            videoPlayerManager.cleanup()
             await MainActor.run {
                 cameraManager.checkPermissions()
                 cameraManager.setupCamera()
@@ -599,20 +596,5 @@ extension RecordingView {
 }
 
 #Preview {
-    RecordingView()
-        .environment(\.videoViewModel, VideoViewModel())
-}
-
-// MARK: - Environment Keys
-private struct VideoPlayerManagerKey: EnvironmentKey {
-    @MainActor static var defaultValue: VideoPlayerManager {
-        VideoPlayerManager()
-    }
-}
-
-extension EnvironmentValues {
-    var videoPlayerManager: VideoPlayerManager {
-        get { self[VideoPlayerManagerKey.self] }
-        set { self[VideoPlayerManagerKey.self] = newValue }
-    }
+    RecordingView(videoViewModel: VideoViewModel())
 }

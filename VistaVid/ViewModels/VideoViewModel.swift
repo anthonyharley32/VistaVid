@@ -209,17 +209,6 @@ final class VideoViewModel: ObservableObject {
             let snapshot = try await query.getDocuments()
             var loadedVideos: [Video] = []
             
-            // Preload thumbnails in parallel while loading videos
-            await withTaskGroup(of: Void.self) { group in
-                for document in snapshot.documents {
-                    group.addTask {
-                        if let video = Video.fromFirestore(document.data(), id: document.documentID) {
-                            _ = await ThumbnailManager.shared.thumbnail(for: video)
-                        }
-                    }
-                }
-            }
-            
             for document in snapshot.documents {
                 guard var video = Video.fromFirestore(document.data(), id: document.documentID) else {
                     debugLog("❌ Failed to parse video document: \(document.documentID)")

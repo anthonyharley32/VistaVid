@@ -1,8 +1,10 @@
 import SwiftUI
+import AVFoundation
 
 struct VideosGridView: View {
     let videos: [Video]
-    let columns = [
+    
+    private let columns = [
         GridItem(.flexible()),
         GridItem(.flexible()),
         GridItem(.flexible())
@@ -14,14 +16,10 @@ struct VideosGridView: View {
                 VideoThumbnailView(video: video)
             }
         }
-        .task {
-            // Preload thumbnails for all videos in the grid
-            await ThumbnailManager.shared.preloadThumbnails(for: videos)
-        }
     }
 }
 
-struct VideoThumbnailView: View {
+private struct VideoThumbnailView: View {
     let video: Video
     @State private var thumbnail: UIImage?
     
@@ -44,7 +42,28 @@ struct VideoThumbnailView: View {
         }
         .cornerRadius(8)
         .task {
-            thumbnail = await ThumbnailManager.shared.thumbnail(for: video)
+            await generateThumbnail()
         }
     }
+    
+    private func generateThumbnail() async {
+        guard let url = video.url else { return }
+        
+        do {
+            let asset = AVURLAsset(url: url)
+            let generator = AVAssetImageGenerator(asset: asset)
+            generator.appliesPreferredTrackTransform = true
+            
+            let cgImage = try await generator.image(at: .zero).image
+            await MainActor.run {
+                thumbnail = UIImage(cgImage: cgImage)
+            }
+        } catch {
+            print("📱 Error generating thumbnail: \(error)")
+        }
+    }
+}
+
+#Preview {
+    VideosGridView(videos: [])
 }

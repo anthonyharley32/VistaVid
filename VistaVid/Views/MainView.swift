@@ -2,10 +2,10 @@ import SwiftUI
 
 struct MainView: View {
     @ObservedObject var authModel: AuthenticationViewModel
+    @StateObject private var videoViewModel = VideoViewModel()
     @State private var selectedTab = 0
     @State private var showingCamera = false
     private let communitiesModel = CommunitiesViewModel()
-    @StateObject private var videoPlayerManager = VideoPlayerManager()
     
     init(authModel: AuthenticationViewModel) {
         self.authModel = authModel
@@ -15,19 +15,17 @@ struct MainView: View {
     var body: some View {
         ZStack(alignment: .bottom) {
             TabView(selection: $selectedTab) {
-                // Feed Tab
-                FeedView(authModel: authModel)
-                    .environment(\.videoPlayerManager, videoPlayerManager)
+                PlaceholderFeedView()
                     .tabItem {
-                        Label("Feed", systemImage: "play.rectangle.fill")
+                        Image(systemName: "house.fill")
+                        Text("Home")
                     }
                     .tag(0)
                 
-                // Communities Tab
                 CommunitiesView(model: communitiesModel)
-                    .environment(\.videoPlayerManager, videoPlayerManager)
                     .tabItem {
-                        Label("Communities", systemImage: "person.3.fill")
+                        Image(systemName: "person.3.fill")
+                        Text("Communities")
                     }
                     .tag(1)
                 
@@ -38,17 +36,17 @@ struct MainView: View {
                     }
                     .tag(2)
                 
-                // Inbox Tab
                 InboxView()
                     .tabItem {
-                        Label("Inbox", systemImage: "envelope.fill")
+                        Image(systemName: "message.fill")
+                        Text("Inbox")
                     }
                     .tag(3)
                 
-                // Profile Tab
                 ProfileView(user: authModel.currentUser ?? User.placeholder, authModel: authModel)
                     .tabItem {
-                        Label("You", systemImage: "person.fill")
+                        Image(systemName: "person.fill")
+                        Text("You")
                     }
                     .tag(4)
             }
@@ -71,9 +69,20 @@ struct MainView: View {
             .offset(y: -10) // Increased offset to have 70% of button overlay the tab bar
         }
         .fullScreenCover(isPresented: $showingCamera) {
-            RecordingView()
-                .environment(\.videoPlayerManager, videoPlayerManager)
+            RecordingView(videoViewModel: videoViewModel)
         }
         .ignoresSafeArea(.keyboard) // Prevent keyboard from pushing content up
     }
+}
+
+struct PlaceholderFeedView: View {
+    var body: some View {
+        ContentUnavailableView("No Videos", 
+            systemImage: "video.slash",
+            description: Text("Videos coming soon!"))
+    }
+}
+
+#Preview {
+    MainView(authModel: AuthenticationViewModel())
 }
