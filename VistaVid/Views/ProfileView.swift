@@ -16,9 +16,20 @@ struct ProfileView: View {
     let authModel: AuthenticationViewModel
     
     var body: some View {
-        NavigationView {
+        NavigationStack {
             ScrollView(showsIndicators: false) {
                 VStack(spacing: 0) {
+                    // Header with Settings Button
+                    HStack {
+                        Spacer()
+                        NavigationLink(destination: SettingsView(model: authModel)) {
+                            Image(systemName: "gearshape")
+                                .font(.system(size: 18))
+                                .foregroundColor(.primary)
+                                .padding()
+                        }
+                    }
+                    
                     // Profile Header
                     VStack(spacing: 16) {
                         CircularProfileImage(user: user, size: 100)
@@ -139,15 +150,6 @@ struct ProfileView: View {
                 }
             }
             .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    NavigationLink(destination: SettingsView(model: authModel)) {
-                        Image(systemName: "gearshape")
-                            .font(.system(size: 18))
-                            .foregroundColor(.primary)
-                    }
-                }
-            }
         }
         .sheet(isPresented: $showFollowList) {
             if let followType = selectedFollowType,

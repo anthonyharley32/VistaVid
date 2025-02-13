@@ -35,7 +35,7 @@ class FYPViewModel: ObservableObject {
         
         do {
             print("📱 [FYPViewModel] Calling videoModel.fetchInitialVideos")
-            await videoModel.fetchInitialVideos()
+            try await videoModel.fetchInitialVideos()
             
             print("📊 [FYPViewModel] VideoModel videos count: \(videoModel.videos.count)")
             
@@ -52,9 +52,9 @@ class FYPViewModel: ObservableObject {
             
             print("📊 [FYPViewModel] Updated state - videos: \(videos.count), currentIndex: \(currentIndex), hasMoreContent: \(hasMoreContent)")
             
-        } catch {
+        } catch let error as NSError {
             print("❌ [FYPViewModel] Error loading videos: \(error)")
-            self.error = "Unable to load videos. Please check your internet connection and try again."
+            self.error = "Unable to load videos: \(error.localizedDescription)"
         }
     }
     
@@ -258,22 +258,26 @@ struct FYPView: View {
     }
     
     // MARK: - Notification Handling
+    @MainActor
     private func setupNotificationObservers() {
         print("👁️ Setting up hands-free mode notification observers in FYPView")
         NotificationCenter.default.addObserver(
             forName: NSNotification.Name("NavigateVideo"),
             object: nil,
             queue: .main
-        ) { notification in
-            guard let direction = notification.userInfo?["direction"] as? String else { return }
+        ) { [weak viewModel] notification in
+            guard let direction = notification.userInfo?["direction"] as? String,
+                  let viewModel = viewModel else { return }
             
-            withAnimation(.easeInOut(duration: 0.25)) {
-                if direction == "previous" && viewModel.currentIndex > 0 {
-                    print("👁️ Navigating to previous video")
-                    viewModel.currentIndex -= 1
-                } else if direction == "next" && viewModel.currentIndex < viewModel.videos.count - 1 {
-                    print("👁️ Navigating to next video")
-                    viewModel.currentIndex += 1
+            Task { @MainActor in
+                withAnimation(.easeInOut(duration: 0.25)) {
+                    if direction == "previous" && viewModel.currentIndex > 0 {
+                        print("👁️ Navigating to previous video")
+                        viewModel.currentIndex -= 1
+                    } else if direction == "next" && viewModel.currentIndex < viewModel.videos.count - 1 {
+                        print("👁️ Navigating to next video")
+                        viewModel.currentIndex += 1
+                    }
                 }
             }
         }
@@ -282,9 +286,12 @@ struct FYPView: View {
             forName: NSNotification.Name("ToggleVideoPlayback"),
             object: nil,
             queue: .main
-        ) { _ in
-            print("👁️ Toggling video playback")
-            viewModel.isPlaying.toggle()
+        ) { [weak viewModel] _ in
+            guard let viewModel = viewModel else { return }
+            Task { @MainActor in
+                print("👁️ Toggling video playback")
+                viewModel.isPlaying.toggle()
+            }
         }
     }
     

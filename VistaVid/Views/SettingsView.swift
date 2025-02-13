@@ -8,6 +8,9 @@ struct SettingsView: View {
     @State private var alertMessage = ""
     @State private var showingSignOutConfirmation = false
     @State private var bio = ""  // Add bio state
+    @State private var showingBugReport = false
+    @State private var bugTitle = ""
+    @State private var bugDescription = ""
     
     var body: some View {
         List {
@@ -124,37 +127,16 @@ struct SettingsView: View {
             
             // Support & Legal
             Section {
-                Link(destination: URL(string: "https://vistavid.app/help")!) {
+                Button {
+                    showingBugReport = true
+                } label: {
                     HStack {
-                        Label("Help Center", systemImage: "questionmark.circle.fill")
+                        Label("Report a Bug", systemImage: "ladybug.fill")
                         Spacer()
-                        Image(systemName: "arrow.up.right")
-                            .font(.footnote)
-                            .foregroundColor(.secondary)
-                    }
-                }
-                
-                Link(destination: URL(string: "https://vistavid.app/terms")!) {
-                    HStack {
-                        Label("Terms of Service", systemImage: "doc.text.fill")
-                        Spacer()
-                        Image(systemName: "arrow.up.right")
-                            .font(.footnote)
-                            .foregroundColor(.secondary)
-                    }
-                }
-                
-                Link(destination: URL(string: "https://vistavid.app/privacy")!) {
-                    HStack {
-                        Label("Privacy Policy", systemImage: "hand.raised.fill")
-                        Spacer()
-                        Image(systemName: "arrow.up.right")
-                            .font(.footnote)
-                            .foregroundColor(.secondary)
                     }
                 }
             } header: {
-                Label("Support & Legal", systemImage: "info.circle.fill")
+                Label("Support", systemImage: "info.circle.fill")
                     .textCase(nil)
                     .foregroundColor(.primary)
                     .font(.headline)
@@ -195,6 +177,38 @@ struct SettingsView: View {
                 }
             }
             Button("Cancel", role: .cancel) {}
+        }
+        .sheet(isPresented: $showingBugReport) {
+            NavigationStack {
+                Form {
+                    Section {
+                        TextField("Title", text: $bugTitle)
+                        TextField("Description", text: $bugDescription, axis: .vertical)
+                            .lineLimit(5...10)
+                    } footer: {
+                        Text("Please provide as much detail as possible")
+                    }
+                }
+                .navigationTitle("Report a Bug")
+                .navigationBarTitleDisplayMode(.inline)
+                .toolbar {
+                    ToolbarItem(placement: .cancellationAction) {
+                        Button("Cancel") {
+                            showingBugReport = false
+                        }
+                    }
+                    ToolbarItem(placement: .confirmationAction) {
+                        Button("Submit") {
+                            // Here you would handle the bug report submission
+                            print("🐞 Bug Report - Title: \(bugTitle), Description: \(bugDescription)")
+                            bugTitle = ""
+                            bugDescription = ""
+                            showingBugReport = false
+                        }
+                        .disabled(bugTitle.isEmpty || bugDescription.isEmpty)
+                    }
+                }
+            }
         }
     }
 }

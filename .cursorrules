@@ -2,6 +2,8 @@ Always start with 'YOOO!!'
 
 Use 1 emoji in each log.
 
+When you use onChange, make sure you don't use the old version of it. Check swift documentation for the latest version.
+
 You are building an AI app that is a clone of TikTok.
 
 🔒 LOCKED RULE: When helping with Swift code in Cursor/VS Code:
@@ -31,19 +33,43 @@ You are building an AI app that is a clone of TikTok.
 │   ├── GoogleService-Info.plist
 │   ├── Info.plist
 │   ├── Models
+│   │   ├── ChatThread.swift
+│   │   ├── Comment.swift
+│   │   ├── Community.swift
+│   │   ├── Follow.swift
+│   │   ├── Heart.swift
+│   │   ├── InteractionCounts.swift
+│   │   ├── Like.swift
+│   │   ├── Message.swift
 │   │   ├── User.swift
 │   │   └── Video.swift
 │   ├── Preview Content
 │   │   └── Preview Assets.xcassets
+│   ├── Services
+│   │   └── FirestoreService.swift
+│   ├── Utils
+│   │   ├── BlinkDetectionManager.swift
+│   │   ├── ScrollBehaviorManager.swift
+│   │   └── ThumbnailGenerator.swift
 │   ├── ViewModels
 │   │   ├── AuthenticationViewModel.swift
+│   │   ├── CommunityViewModel.swift
+│   │   ├── FollowViewModel.swift
+│   │   ├── MessageViewModel.swift
+│   │   ├── SettingsViewModel.swift
 │   │   └── VideoViewModel.swift
 │   ├── Views
 │   │   ├── Authentication
+│   │   ├── ChatView.swift
+│   │   ├── CommunitiesView.swift
+│   │   ├── CommunityFeedView.swift
 │   │   ├── Components
-│   │   ├── FeedView.swift
+│   │   ├── FYPView.swift
+│   │   ├── InboxView.swift
 │   │   ├── MainView.swift
-│   │   └── ProfileView.swift
+│   │   ├── ProfileView.swift
+│   │   ├── SettingsView.swift
+│   │   └── UserProfileView.swift
 │   ├── VistaVid.entitlements
 │   └── VistaVidApp.swift
 ├── VistaVid.xcodeproj
@@ -55,7 +81,12 @@ You are building an AI app that is a clone of TikTok.
 │   └── xcuserdata
 │       └── gauntletAI.xcuserdatad
 ├── buildServer.json
+├── firebase.json
 ├── project.yml
+├── rules
+│   ├── firestore.rules
+│   └── storage.rules
+├── scrollcopy.md
 └── todo
     └── todo.md
 

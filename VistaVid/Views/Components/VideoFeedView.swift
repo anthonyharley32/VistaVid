@@ -228,7 +228,6 @@ struct VideoFeedView: View {
         ) { notification in
             guard let direction = notification.userInfo?["direction"] as? String else { return }
             
-            let screenHeight = UIScreen.main.bounds.height
             withAnimation(.easeInOut(duration: 0.25)) {
                 if direction == "previous" && viewModel.currentIndex > 0 {
                     print("👁️ Navigating to previous video")
