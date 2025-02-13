@@ -152,9 +152,8 @@ struct ProfileView: View {
             .navigationBarTitleDisplayMode(.inline)
         }
         .sheet(isPresented: $showFollowList) {
-            if let followType = selectedFollowType,
-               let userId = Auth.auth().currentUser?.uid {
-                FollowListView(userId: userId, type: followType)
+            if let followType = selectedFollowType {
+                FollowListView(userId: user.id, type: followType)
             }
         }
         .task {
