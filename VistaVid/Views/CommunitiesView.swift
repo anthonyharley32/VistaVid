@@ -666,12 +666,7 @@ struct CommunitiesView: View {
         ScrollView {
             LazyVStack(spacing: 12) {
                 ForEach(model.communities) { community in
-                    ZStack {
-                        NavigationLink(destination: PlaceholderCommunityFeedView()) {
-                            CommunityCell(community: community)
-                        }
-                        .opacity(0)
-                        
+                    NavigationLink(destination: CommunityFeedView(model: CommunityFeedViewModel(communityId: community.id))) {
                         HStack(spacing: 12) {
                             if community.iconType == "emoji" {
                                 Text(community.displayIcon)
@@ -702,23 +697,25 @@ struct CommunitiesView: View {
                             Spacer()
                         }
                         .padding(.horizontal)
-                        .contentShape(Rectangle())
-                        .onTapGesture {
-                            print("📱 [CommunitiesView]: Tapped community: \(community.name)")
-                        }
-                        .simultaneousGesture(
-                            LongPressGesture(minimumDuration: 0.5)
-                                .onEnded { _ in
-                                    print("📱 [CommunitiesView]: Long press detected on community: \(community.name)")
-                                    selectedCommunity = community
-                                    showingCommunityDetail = true
-                                }
-                        )
                     }
                     .buttonStyle(.plain)
+                    .contentShape(Rectangle())
+                    .simultaneousGesture(
+                        LongPressGesture(minimumDuration: 0.5)
+                            .onEnded { _ in
+                                print("📱 [CommunitiesView]: Showing community detail: \(community.name)")
+                                selectedCommunity = community
+                                showingCommunityDetail = true
+                            }
+                    )
                 }
             }
             .padding(.vertical)
+        }
+        .sheet(isPresented: $showingCommunityDetail) {
+            if let community = selectedCommunity {
+                CommunityDetailSheet(community: community)
+            }
         }
     }
 }

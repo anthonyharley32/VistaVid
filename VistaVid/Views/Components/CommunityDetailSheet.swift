@@ -154,4 +154,4 @@ struct CommunityDetailSheet: View {
     private func debugLog(_ message: String) {
         print("CommunityDetailSheet Debug: \(message)")
     }
-} 
+}

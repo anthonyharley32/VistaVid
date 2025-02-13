@@ -28,6 +28,7 @@ final class MessageViewModel: ObservableObject {
     
     // MARK: - Public Methods
     func startObservingChatThreads() {
+        print("🔄 [MessageViewModel] Starting chat threads observation")
         guard let currentUserId = Auth.auth().currentUser?.uid else { return }
         
         threadsListener = db.collection("chatThreads")
@@ -42,10 +43,7 @@ final class MessageViewModel: ObservableObject {
                 
                 guard let documents = snapshot?.documents else { return }
                 
-                // Capture database reference locally
-                let db = self?.db
-                
-                Task {
+                Task { @MainActor in
                     var threads: [ChatThread] = []
                     
                     for document in documents {
@@ -57,7 +55,7 @@ final class MessageViewModel: ObservableObject {
                         var participants: [User] = []
                         for userId in thread.participantIds {
                             do {
-                                let userDoc = try await db?.collection("users")
+                                let userDoc = try await self?.db.collection("users")
                                     .document(userId)
                                     .getDocument()
                                 
@@ -74,12 +72,8 @@ final class MessageViewModel: ObservableObject {
                         threads.append(thread)
                     }
                     
-                    let threadsToUpdate = threads
-                    let viewModel = self
-                    await MainActor.run {
-                        viewModel?.chatThreads = threadsToUpdate
-                        print("✅ Successfully loaded \(threadsToUpdate.count) chat threads with user data")
-                    }
+                    self?.chatThreads = threads
+                    print("✅ Successfully loaded \(threads.count) chat threads with user data")
                 }
             }
     }
