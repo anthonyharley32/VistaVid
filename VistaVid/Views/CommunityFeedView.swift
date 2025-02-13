@@ -37,33 +37,39 @@ struct CommunityFeedView: View {
     @Environment(\.dismiss) private var dismiss
     
     var body: some View {
-        Group {
-            if model.isLoading {
-                ProgressView()
-                    .progressViewStyle(.circular)
-            } else if let error = model.error {
-                VStack {
-                    Text("Error loading videos")
-                        .foregroundColor(.red)
-                    Text(error)
-                        .font(.caption)
-                    Button("Retry") {
-                        Task { await model.loadVideos() }
+        NavigationStack {
+            Group {
+                if model.isLoading {
+                    ProgressView()
+                        .progressViewStyle(.circular)
+                } else if let error = model.error {
+                    VStack {
+                        Text("Error loading videos")
+                            .foregroundColor(.red)
+                        Text(error)
+                            .font(.caption)
+                        Button("Retry") {
+                            Task { await model.loadVideos() }
+                        }
+                    }
+                } else if model.videos.isEmpty {
+                    Text("No videos in this community yet")
+                        .foregroundColor(.secondary)
+                } else {
+                    VideoFeedView(
+                        videos: model.videos,
+                        startingIndex: 0
+                    )
+                }
+            }
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarLeading) {
+                    Button("Back") {
+                        dismiss()
                     }
                 }
-            } else if model.videos.isEmpty {
-                ContentUnavailableView(
-                    "No Videos",
-                    systemImage: "video.slash",
-                    description: Text("This community doesn't have any videos yet")
-                )
-            } else {
-                VideoFeedView(
-                    videos: model.videos,
-                    startingIndex: 0
-                )
             }
         }
-        .navigationBarTitleDisplayMode(.inline)
     }
 }
