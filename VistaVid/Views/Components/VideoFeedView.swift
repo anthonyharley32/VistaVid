@@ -80,147 +80,126 @@ private struct VideoCardContainer: View {
 
 struct VideoFeedView: View {
     @StateObject private var viewModel: VideoFeedViewModel
-    @Environment(\.dismiss) private var dismiss
     @State private var dragOffset: CGFloat = 0
     @State private var isAnimating = false
     @State private var showUserProfile = false
     @State private var selectedUserId: String?
     
     let title: String
-    let onClose: (() -> Void)?
     
     init(
         videos: [Video],
         startingIndex: Int,
-        title: String = "",
-        onClose: (() -> Void)? = nil
+        title: String = ""
     ) {
         _viewModel = StateObject(wrappedValue: VideoFeedViewModel(
             videos: videos,
             startingIndex: startingIndex
         ))
         self.title = title
-        self.onClose = onClose
     }
     
     var body: some View {
-        NavigationStack {
-            ZStack {
-                Color.black.ignoresSafeArea()
-                
-                GeometryReader { geometry in
-                    ZStack {
-                        if viewModel.videos.isEmpty {
-                            VStack(spacing: 12) {
-                                Image(systemName: "camera.circle.fill")
-                                    .font(.system(size: 50))
-                                    .symbolVariant(.slash)
-                                    .foregroundColor(.black)
-                                
-                                Text("No videos to show")
-                                    .font(.title3)
-                                    .foregroundColor(.black)
-                            }
-                            .frame(maxWidth: .infinity, maxHeight: .infinity)
-                            .background(.ultraThinMaterial)
-                        } else {
-                            // Videos
-                            ForEach(Array(viewModel.videos.enumerated()), id: \.element.id) { index, video in
-                                if shouldRenderVideo(at: index) {
-                                    VideoCardContainer(
-                                        video: video,
-                                        index: index,
-                                        currentIndex: viewModel.currentIndex,
-                                        dragOffset: dragOffset,
-                                        onDoubleTap: { position in
-                                            viewModel.createHeart(at: position)
-                                        },
-                                        isPlaying: viewModel.isPlaying,
-                                        onProfileTap: navigateToProfile
-                                    )
-                                }
-                            }
+        ZStack {
+            Color.black.ignoresSafeArea()
+            
+            GeometryReader { geometry in
+                ZStack {
+                    if viewModel.videos.isEmpty {
+                        VStack(spacing: 12) {
+                            Image(systemName: "camera.circle.fill")
+                                .font(.system(size: 50))
+                                .symbolVariant(.slash)
+                                .foregroundColor(.black)
                             
-                            // Hearts
-                            ForEach(viewModel.hearts) { heart in
-                                Image(systemName: "heart.fill")
-                                    .font(.system(size: 100))
-                                    .foregroundStyle(
-                                        LinearGradient(
-                                            colors: [.pink, .red],
-                                            startPoint: .topLeading,
-                                            endPoint: .bottomTrailing
-                                        )
+                            Text("No videos to show")
+                                .font(.title3)
+                                .foregroundColor(.black)
+                        }
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                        .background(.ultraThinMaterial)
+                    } else {
+                        // Videos
+                        ForEach(Array(viewModel.videos.enumerated()), id: \.element.id) { index, video in
+                            if shouldRenderVideo(at: index) {
+                                VideoCardContainer(
+                                    video: video,
+                                    index: index,
+                                    currentIndex: viewModel.currentIndex,
+                                    dragOffset: dragOffset,
+                                    onDoubleTap: { position in
+                                        viewModel.createHeart(at: position)
+                                    },
+                                    isPlaying: viewModel.isPlaying,
+                                    onProfileTap: navigateToProfile
+                                )
+                            }
+                        }
+                        
+                        // Hearts
+                        ForEach(viewModel.hearts) { heart in
+                            Image(systemName: "heart.fill")
+                                .font(.system(size: 100))
+                                .foregroundStyle(
+                                    LinearGradient(
+                                        colors: [.pink, .red],
+                                        startPoint: .topLeading,
+                                        endPoint: .bottomTrailing
                                     )
-                                    .shadow(color: .black.opacity(0.3), radius: 8, x: 0, y: 4)
-                                    .position(heart.position)
-                            }
+                                )
+                                .shadow(color: .black.opacity(0.3), radius: 8, x: 0, y: 4)
+                                .position(heart.position)
                         }
                     }
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
-                    .clipped()
-                    .transaction { transaction in
-                        transaction.animation = isAnimating ? 
-                            .interpolatingSpring(stiffness: 200, damping: 25) : nil
-                    }
-                    .gesture(createDragGesture(geometry: geometry))
                 }
-                .frame(maxHeight: .infinity)
-                .ignoresSafeArea()
-                
-                // Header
-                VStack {
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .clipped()
+                .transaction { transaction in
+                    transaction.animation = isAnimating ? 
+                        .interpolatingSpring(stiffness: 200, damping: 25) : nil
+                }
+                .gesture(createDragGesture(geometry: geometry))
+            }
+            .frame(maxHeight: .infinity)
+            .ignoresSafeArea()
+            
+            // Header
+            VStack {
+                if !title.isEmpty {
                     HStack {
-                        Button(action: {
-                            if let onClose = onClose {
-                                onClose()
-                            } else {
-                                dismiss()
-                            }
-                        }) {
-                            Image(systemName: "xmark")
-                                .foregroundColor(.white)
-                                .font(.title2)
-                                .padding()
-                        }
-                        
-                        if !title.isEmpty {
-                            Text(title)
-                                .foregroundColor(.white)
-                                .font(.headline)
-                        }
-                        
+                        Text(title)
+                            .foregroundColor(.white)
+                            .font(.headline)
                         Spacer()
                     }
-                    Spacer()
                 }
-                .zIndex(1)
+                Spacer()
             }
-            .fullScreenCover(isPresented: $showUserProfile) {
-                if let userId = selectedUserId {
-                    NavigationStack {
-                        UserProfileView(userId: userId)
-                            .onAppear {
-                                viewModel.isPlaying = false
-                            }
-                    }
-                }
-            }
-            .onAppear {
-                viewModel.isPlaying = true
-                setupNotificationObservers()
-            }
-            .onDisappear {
-                viewModel.isPlaying = false
-                removeNotificationObservers()
-            }
-            .preferredColorScheme(.dark)
+            .zIndex(1)
         }
+        .fullScreenCover(isPresented: $showUserProfile) {
+            if let userId = selectedUserId {
+                UserProfileView(userId: userId)
+                    .onAppear {
+                        viewModel.isPlaying = false
+                    }
+            }
+        }
+        .onAppear {
+            viewModel.isPlaying = true
+            setupNotificationObservers()
+        }
+        .onDisappear {
+            viewModel.isPlaying = false
+            removeNotificationObservers()
+        }
+        .preferredColorScheme(.dark)
     }
     
     // MARK: - Notification Handling
     private func setupNotificationObservers() {
-        print("👁️ Setting up hands-free mode notification observers")
+        print("👁️ Setting up video navigation observers")
+        
         NotificationCenter.default.addObserver(
             forName: NSNotification.Name("NavigateVideo"),
             object: nil,
@@ -228,7 +207,6 @@ struct VideoFeedView: View {
         ) { notification in
             guard let direction = notification.userInfo?["direction"] as? String else { return }
             
-            let screenHeight = UIScreen.main.bounds.height
             withAnimation(.easeInOut(duration: 0.25)) {
                 if direction == "previous" && viewModel.currentIndex > 0 {
                     print("👁️ Navigating to previous video")
@@ -239,27 +217,13 @@ struct VideoFeedView: View {
                 }
             }
         }
-        
-        NotificationCenter.default.addObserver(
-            forName: NSNotification.Name("ToggleVideoPlayback"),
-            object: nil,
-            queue: .main
-        ) { _ in
-            print("👁️ Toggling video playback")
-            viewModel.isPlaying.toggle()
-        }
     }
     
     private func removeNotificationObservers() {
-        print("👁️ Removing hands-free mode notification observers")
+        print("👁️ Removing video navigation observers")
         NotificationCenter.default.removeObserver(
             self,
             name: NSNotification.Name("NavigateVideo"),
-            object: nil
-        )
-        NotificationCenter.default.removeObserver(
-            self,
-            name: NSNotification.Name("ToggleVideoPlayback"),
             object: nil
         )
     }
@@ -340,4 +304,4 @@ private enum Constants {
         startingIndex: 0,
         title: "Liked Videos"
     )
-} 
+}

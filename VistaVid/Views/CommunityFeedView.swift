@@ -52,16 +52,18 @@ struct CommunityFeedView: View {
                     }
                 }
             } else if model.videos.isEmpty {
-                Text("No videos in this community yet")
-                    .foregroundColor(.secondary)
+                ContentUnavailableView(
+                    "No Videos",
+                    systemImage: "video.slash",
+                    description: Text("This community doesn't have any videos yet")
+                )
             } else {
                 VideoFeedView(
                     videos: model.videos,
-                    startingIndex: 0,
-                    title: "Community Videos",
-                    onClose: { dismiss() }
+                    startingIndex: 0
                 )
             }
         }
+        .navigationBarTitleDisplayMode(.inline)
     }
 }
