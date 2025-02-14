@@ -21,92 +21,86 @@ class FYPViewModel: ObservableObject {
     private let videoModel = VideoViewModel()
     
     init() {
-        print("🎬 [FYPViewModel] Initialized")
+        print(" [FYPViewModel] Initialized")
         Task {
-            print("🎬 [FYPViewModel] Starting initial load from init")
+            print(" [FYPViewModel] Starting initial load from init")
             await loadInitialVideos()
         }
     }
     
     @MainActor
     public func loadInitialVideos() async {
-        print("🎬 [FYPViewModel] Starting loadInitialVideos")
-        print("📊 [FYPViewModel] Current state - videos: \(videos.count), currentIndex: \(currentIndex)")
+        print(" [FYPViewModel] Starting loadInitialVideos")
+        print(" [FYPViewModel] Current state - videos: \(videos.count), currentIndex: \(currentIndex)")
         
-        do {
-            print("📱 [FYPViewModel] Calling videoModel.fetchInitialVideos")
-            try await videoModel.fetchInitialVideos()
-            
-            print("📊 [FYPViewModel] VideoModel videos count: \(videoModel.videos.count)")
-            
-            if videoModel.videos.isEmpty {
-                print("⚠️ [FYPViewModel] No videos found in database")
-                self.error = "No videos to show"
-                return
-            }
-            
-            print("✅ [FYPViewModel] Initial videos loaded: \(videoModel.videos.count)")
-            self.videos = videoModel.videos
-            currentOffset = videos.count
-            hasMoreContent = !videos.isEmpty
-            
-            print("📊 [FYPViewModel] Updated state - videos: \(videos.count), currentIndex: \(currentIndex), hasMoreContent: \(hasMoreContent)")
-            
-        } catch let error as NSError {
-            print("❌ [FYPViewModel] Error loading videos: \(error)")
-            self.error = "Unable to load videos: \(error.localizedDescription)"
+        print(" [FYPViewModel] Calling videoModel.fetchInitialVideos")
+        await videoModel.fetchInitialVideos()
+        
+        print(" [FYPViewModel] VideoModel videos count: \(videoModel.videos.count)")
+        
+        if videoModel.videos.isEmpty {
+            print(" [FYPViewModel] No videos found in database")
+            self.error = "No videos to show"
+            return
         }
+        
+        print(" [FYPViewModel] Initial videos loaded: \(videoModel.videos.count)")
+        self.videos = videoModel.videos
+        currentOffset = videos.count
+        hasMoreContent = !videos.isEmpty
+        
+        print(" [FYPViewModel] Updated state - videos: \(videos.count), currentIndex: \(currentIndex), hasMoreContent: \(hasMoreContent)")
     }
     
     @MainActor
     func loadMoreVideosIfNeeded() async {
         guard shouldLoadMore else {
-            print("⏸️ [FYPViewModel] Skipping loadMore - shouldLoadMore: false")
+            print(" [FYPViewModel] Skipping loadMore - shouldLoadMore: false")
             return
         }
         
-        print("📱 [FYPViewModel] Loading more videos")
-        print("📊 [FYPViewModel] Current state - videos: \(videos.count), currentIndex: \(currentIndex)")
+        print(" [FYPViewModel] Loading more videos")
+        print(" [FYPViewModel] Current state - videos: \(videos.count), currentIndex: \(currentIndex)")
         
         isLoadingMore = true
         error = nil
         
         do {
             let currentCount = videos.count
-            print("📥 [FYPViewModel] Calling videoModel.fetchNextBatch")
+            print(" [FYPViewModel] Calling videoModel.fetchNextBatch")
             await videoModel.fetchNextBatch()
             
-            print("📊 [FYPViewModel] VideoModel videos count after fetch: \(videoModel.videos.count)")
+            print(" [FYPViewModel] VideoModel videos count after fetch: \(videoModel.videos.count)")
             
             // Get only the new videos
             let newVideos = Array(videoModel.videos.suffix(from: currentCount))
-            print("📊 [FYPViewModel] New videos count: \(newVideos.count)")
+            print(" [FYPViewModel] New videos count: \(newVideos.count)")
             
             if newVideos.isEmpty {
-                print("⚠️ [FYPViewModel] No more videos available")
+                print(" [FYPViewModel] No more videos available")
                 hasMoreContent = false
                 hasReachedEnd = true
                 isLoadingMore = false
                 return
             }
             
-            print("✅ [FYPViewModel] Loaded \(newVideos.count) more videos")
+            print(" [FYPViewModel] Loaded \(newVideos.count) more videos")
             
             // Update state
             videos.append(contentsOf: newVideos)
             currentOffset += newVideos.count
             hasMoreContent = true
             
-            print("📊 [FYPViewModel] Updated state - videos: \(videos.count), currentOffset: \(currentOffset)")
+            print(" [FYPViewModel] Updated state - videos: \(videos.count), currentOffset: \(currentOffset)")
             
             // Only clean up old videos if we're not near the end
             if hasMoreContent && videos.count > maxBufferSize {
-                print("🧹 [FYPViewModel] Starting cleanup")
+                print(" [FYPViewModel] Starting cleanup")
                 cleanupOldVideos()
             }
             
         } catch {
-            print("❌ [FYPViewModel] Error loading more videos: \(error)")
+            print(" [FYPViewModel] Error loading more videos: \(error)")
             self.error = error.localizedDescription
         }
         
@@ -115,12 +109,12 @@ class FYPViewModel: ObservableObject {
     
     private func cleanupOldVideos() {
         guard videos.count > maxBufferSize && !hasReachedEnd else {
-            print("⏭️ [FYPViewModel] Skipping cleanup - conditions not met")
+            print(" [FYPViewModel] Skipping cleanup - conditions not met")
             return
         }
         
-        print("🧹 [FYPViewModel] Cleaning up old videos")
-        print("📊 [FYPViewModel] Before cleanup - videos: \(videos.count), currentIndex: \(currentIndex)")
+        print(" [FYPViewModel] Cleaning up old videos")
+        print(" [FYPViewModel] Before cleanup - videos: \(videos.count), currentIndex: \(currentIndex)")
         
         // Keep current video + buffer ahead and behind
         let keepRange = max(0, currentIndex - 2)...min(videos.count - 1, currentIndex + bufferThreshold)
@@ -130,12 +124,12 @@ class FYPViewModel: ObservableObject {
         currentOffset -= currentIndex - keepRange.lowerBound
         currentIndex -= keepRange.lowerBound
         
-        print("📊 [FYPViewModel] After cleanup - videos: \(videos.count), currentIndex: \(currentIndex), offset: \(currentOffset)")
+        print(" [FYPViewModel] After cleanup - videos: \(videos.count), currentIndex: \(currentIndex), offset: \(currentOffset)")
     }
     
     private var shouldLoadMore: Bool {
         guard !isLoadingMore && hasMoreContent && !hasReachedEnd else {
-            print("⏸️ [FYPViewModel] shouldLoadMore: false - isLoadingMore: \(isLoadingMore), hasMoreContent: \(hasMoreContent), hasReachedEnd: \(hasReachedEnd)")
+            print(" [FYPViewModel] shouldLoadMore: false - isLoadingMore: \(isLoadingMore), hasMoreContent: \(hasMoreContent), hasReachedEnd: \(hasReachedEnd)")
             return false
         }
         
@@ -143,13 +137,13 @@ class FYPViewModel: ObservableObject {
         let distanceToEnd = videos.count - (currentIndex + 1)
         let shouldLoad = distanceToEnd <= bufferThreshold
         
-        print("📊 [FYPViewModel] shouldLoadMore check - distance to end: \(distanceToEnd), threshold: \(bufferThreshold), should load: \(shouldLoad)")
+        print(" [FYPViewModel] shouldLoadMore check - distance to end: \(distanceToEnd), threshold: \(bufferThreshold), should load: \(shouldLoad)")
         
         return shouldLoad
     }
     
     func createHeart(at position: CGPoint) {
-        print("💖 [FYPViewModel] Creating heart at position: \(position)")
+        print(" [FYPViewModel] Creating heart at position: \(position)")
         let heart = Heart(position: position, rotation: Double.random(in: -45...45))
         hearts.append(heart)
         
@@ -243,15 +237,15 @@ struct FYPView: View {
             .task {
                 // Only load videos if we haven't loaded any yet
                 if viewModel.videos.isEmpty {
-                    print("🏠 [FYP] View appeared, starting initial load")
+                    print(" [FYP] View appeared, starting initial load")
                     await viewModel.loadInitialVideos()
                 }
                 
-                print("🏠 [FYP] Setting up notification observers")
+                print(" [FYP] Setting up notification observers")
                 setupNotificationObservers()
             }
             .onDisappear {
-                print("🏠 [FYP] View disappeared, removing observers")
+                print(" [FYP] View disappeared, removing observers")
                 removeNotificationObservers()
             }
         }
@@ -260,7 +254,7 @@ struct FYPView: View {
     // MARK: - Notification Handling
     @MainActor
     private func setupNotificationObservers() {
-        print("👁️ Setting up hands-free mode notification observers in FYPView")
+        print(" Setting up hands-free mode notification observers in FYPView")
         NotificationCenter.default.addObserver(
             forName: NSNotification.Name("NavigateVideo"),
             object: nil,
@@ -272,10 +266,10 @@ struct FYPView: View {
             Task { @MainActor in
                 withAnimation(.easeInOut(duration: 0.25)) {
                     if direction == "previous" && viewModel.currentIndex > 0 {
-                        print("👁️ Navigating to previous video")
+                        print(" Navigating to previous video")
                         viewModel.currentIndex -= 1
                     } else if direction == "next" && viewModel.currentIndex < viewModel.videos.count - 1 {
-                        print("👁️ Navigating to next video")
+                        print(" Navigating to next video")
                         viewModel.currentIndex += 1
                     }
                 }
@@ -289,14 +283,14 @@ struct FYPView: View {
         ) { [weak viewModel] _ in
             guard let viewModel = viewModel else { return }
             Task { @MainActor in
-                print("👁️ Toggling video playback")
+                print(" Toggling video playback")
                 viewModel.isPlaying.toggle()
             }
         }
     }
     
     private func removeNotificationObservers() {
-        print("👁️ Removing hands-free mode notification observers from FYPView")
+        print(" Removing hands-free mode notification observers from FYPView")
         NotificationCenter.default.removeObserver(
             self,
             name: NSNotification.Name("NavigateVideo"),
@@ -312,7 +306,7 @@ struct FYPView: View {
     private func shouldRenderVideo(at index: Int) -> Bool {
         // Keep 2 videos loaded in each direction for smoother transitions
         let shouldRender = abs(index - viewModel.currentIndex) <= 2
-        print("🎥 [FYP] Checking if should render video at index \(index): \(shouldRender)")
+        print(" [FYP] Checking if should render video at index \(index): \(shouldRender)")
         return shouldRender
     }
     
@@ -346,7 +340,7 @@ struct FYPView: View {
             )
             
             if newIndex != viewModel.currentIndex {
-                print("🔄 [FYP] Changing current index from \(viewModel.currentIndex) to \(newIndex)")
+                print(" [FYP] Changing current index from \(viewModel.currentIndex) to \(newIndex)")
                 withAnimation(.easeInOut(duration: 0.25)) {
                     viewModel.currentIndex = newIndex
                     dragOffset = 0
@@ -355,7 +349,7 @@ struct FYPView: View {
                 // Only try to load more if we're not at the end
                 if !viewModel.hasReachedEnd && newIndex >= viewModel.videos.count - 2 {
                     Task {
-                        print("📥 [FYP] Near end of list, loading more videos")
+                        print(" [FYP] Near end of list, loading more videos")
                         await viewModel.loadMoreVideosIfNeeded()
                     }
                 }
@@ -379,7 +373,7 @@ struct FYPView: View {
         let shouldRestrict = (viewModel.currentIndex == 0 && dragOffset > 0) ||
                (viewModel.currentIndex == viewModel.videos.count - 1 && dragOffset < 0)
         if shouldRestrict {
-            print("🛑 [FYP] Restricting drag at index \(viewModel.currentIndex)")
+            print(" [FYP] Restricting drag at index \(viewModel.currentIndex)")
         }
         return shouldRestrict
     }
