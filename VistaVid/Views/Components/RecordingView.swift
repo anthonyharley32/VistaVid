@@ -10,6 +10,7 @@ struct RecordingView: View {
     @State private var selectedAlgorithmTags: [String] = []
     @State private var isUploading = false
     @State private var uploadError: Error?
+    @State private var moderationState: VideoModerationState = .none
     @Environment(\.scenePhase) private var scenePhase
     @Environment(\.dismiss) private var dismiss
     @Environment(\.presentationMode) private var presentationMode
@@ -180,23 +181,73 @@ struct RecordingView: View {
                             }
                             
                             isUploading = true
+                            moderationState = .uploading
                             defer { isUploading = false }
                             
                             do {
                                 print("📤 [RecordingView]: Starting video upload")
-                                try await videoViewModel.uploadVideo(
+                                let videoId = try await videoViewModel.uploadVideo(
                                     videoURL: videoURL,
                                     description: description,
                                     algorithmTags: selectedAlgorithmTags,
                                     communityId: selectedCommunityId
                                 )
-                                print("✅ [RecordingView]: Video upload successful")
-                                showingDescriptionSheet = false
-                                description = ""
-                                dismiss()
+                                
+                                // Start monitoring moderation status
+                                moderationState = .moderating
+                                print("🎯 [RecordingView]: Monitoring video ID: \(videoId)")
+                                
+                                // Add initial delay to allow Firebase Functions to start processing
+                                print("⏳ [RecordingView]: Waiting for initial processing delay...")
+                                try await Task.sleep(nanoseconds: 5_000_000_000) // Wait 5 seconds
+                                
+                                // Poll for moderation status
+                                for attempt in 0..<45 { // Poll for up to 90 seconds
+                                    do {
+                                        print("🔄 [RecordingView]: Status check attempt \(attempt + 1)")
+                                        let videoDoc = try await videoViewModel.getVideoStatus(videoId)
+                                        print("📊 [RecordingView]: Current status: \(videoDoc.status)")
+                                        
+                                        switch videoDoc.status {
+                                            case "blocked":
+                                                print("🚫 [RecordingView]: Video blocked")
+                                                moderationState = .blocked
+                                                return
+                                            case "moderation_failed":
+                                                print("❌ [RecordingView]: Moderation failed")
+                                                moderationState = .failed
+                                                return
+                                            case "moderation_passed", "processed":
+                                                print("✅ [RecordingView]: Video processed successfully")
+                                                moderationState = .passed
+                                                showingDescriptionSheet = false
+                                                description = ""
+                                                dismiss()
+                                                return
+                                            default:
+                                                print("⏳ [RecordingView]: Status still processing: \(videoDoc.status)")
+                                                try await Task.sleep(nanoseconds: 2_000_000_000) // Wait 2 seconds
+                                                continue
+                                        }
+                                    } catch let error as NSError where error.domain == "VideoStatus" && error.code == 404 {
+                                        // Video not found yet, wait and retry
+                                        print("⏳ [RecordingView]: Video document not ready (attempt \(attempt + 1))")
+                                        try await Task.sleep(nanoseconds: 2_000_000_000) // Wait 2 seconds
+                                        continue
+                                    } catch {
+                                        print("❌ [RecordingView]: Error checking status: \(error.localizedDescription)")
+                                        throw error
+                                    }
+                                }
+                                
+                                // If we get here, polling timed out
+                                print("⚠️ [RecordingView]: Status check timed out after 90 seconds")
+                                moderationState = .failed
+                                
                             } catch {
                                 print("❌ [RecordingView]: Upload failed - \(error.localizedDescription)")
                                 uploadError = error
+                                moderationState = .failed
                             }
                         }
                     }) {
@@ -206,18 +257,38 @@ struct RecordingView: View {
                                     .progressViewStyle(CircularProgressViewStyle(tint: .white))
                                     .frame(width: 20, height: 20)
                             } else {
-                                Text("Post")
+                                Text(moderationState == .none ? "Post" : moderationState.message)
                                     .fontWeight(.semibold)
-                                Image(systemName: "arrow.up.circle.fill")
+                                if moderationState == .none {
+                                    Image(systemName: "arrow.up.circle.fill")
+                                }
                             }
                         }
                         .frame(maxWidth: .infinity)
                         .padding()
-                        .background(description.isEmpty ? Color.gray.opacity(0.3) : Color.blue)
+                        .background(
+                            moderationState == .blocked ? Color.red :
+                            moderationState == .failed ? Color.orange :
+                            moderationState == .passed ? Color.green :
+                            description.isEmpty ? Color.gray.opacity(0.3) : Color.blue
+                        )
                         .foregroundColor(.white)
                         .clipShape(RoundedRectangle(cornerRadius: 14))
                     }
-                    .disabled(description.isEmpty || isUploading)
+                    .disabled(description.isEmpty || isUploading || moderationState == .blocked)
+                    .alert(
+                        "Content Moderation",
+                        isPresented: .constant(moderationState == .blocked),
+                        actions: {
+                            Button("OK", role: .cancel) {
+                                moderationState = .none
+                                showingDescriptionSheet = false
+                            }
+                        },
+                        message: {
+                            Text("Your video contains content that violates our community guidelines. Please review our guidelines and try again.")
+                        }
+                    )
                     .padding(.horizontal)
                     
                     Spacer()
@@ -597,4 +668,25 @@ extension RecordingView {
 
 #Preview {
     RecordingView(videoViewModel: VideoViewModel())
+}
+
+// Add this enum after the RecordingView struct
+enum VideoModerationState {
+    case none
+    case uploading
+    case moderating
+    case blocked
+    case failed
+    case passed
+    
+    var message: String {
+        switch self {
+            case .none: return ""
+            case .uploading: return "Uploading video..."
+            case .moderating: return "Checking content..."
+            case .blocked: return "Content violates community guidelines"
+            case .failed: return "Content check failed, please try again"
+            case .passed: return "Content check passed!"
+        }
+    }
 }

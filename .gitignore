@@ -74,3 +74,5 @@ injected_container.swift
 
 
 scrollcopy.md
+.env
+firebase-debug.log

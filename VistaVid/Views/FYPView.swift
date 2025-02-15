@@ -1,16 +1,17 @@
 import SwiftUI
 import FirebaseAuth
 import AVKit
+import Observation
 
-@MainActor
-class FYPViewModel: ObservableObject {
-    @Published var videos: [Video] = []
-    @Published var currentIndex: Int = 0
-    @Published var isLoadingMore = false
-    @Published var hearts: [Heart] = []
-    @Published var error: String?
-    @Published var hasReachedEnd = false
-    @Published var isPlaying = true
+@Observable @MainActor final class FYPViewModel {
+    // MARK: - Properties
+    var videos: [Video] = []
+    var currentIndex: Int = 0
+    var isLoadingMore = false
+    var hearts: [Heart] = []
+    var error: String?
+    var hasReachedEnd = false
+    var isPlaying = true
     
     // Pagination and buffering
     private let pageSize = 5
@@ -33,6 +34,7 @@ class FYPViewModel: ObservableObject {
         print(" [FYPViewModel] Starting loadInitialVideos")
         print(" [FYPViewModel] Current state - videos: \(videos.count), currentIndex: \(currentIndex)")
         
+<<<<<<< Updated upstream
         print(" [FYPViewModel] Calling videoModel.fetchInitialVideos")
         await videoModel.fetchInitialVideos()
         
@@ -40,16 +42,33 @@ class FYPViewModel: ObservableObject {
         
         if videoModel.videos.isEmpty {
             print(" [FYPViewModel] No videos found in database")
+=======
+        print("📱 [FYPViewModel] Calling videoModel.fetchInitialVideos")
+        await videoModel.fetchInitialVideos()
+        
+        print("📊 [FYPViewModel] VideoModel videos count: \(videoModel.videos.count)")
+        
+        if videoModel.videos.isEmpty {
+            print("⚠️ [FYPViewModel] No videos found in database")
+>>>>>>> Stashed changes
             self.error = "No videos to show"
             return
         }
         
+<<<<<<< Updated upstream
         print(" [FYPViewModel] Initial videos loaded: \(videoModel.videos.count)")
+=======
+        print("✅ [FYPViewModel] Initial videos loaded: \(videoModel.videos.count)")
+>>>>>>> Stashed changes
         self.videos = videoModel.videos
         currentOffset = videos.count
         hasMoreContent = !videos.isEmpty
         
+<<<<<<< Updated upstream
         print(" [FYPViewModel] Updated state - videos: \(videos.count), currentIndex: \(currentIndex), hasMoreContent: \(hasMoreContent)")
+=======
+        print("📊 [FYPViewModel] Updated state - videos: \(videos.count), currentIndex: \(currentIndex), hasMoreContent: \(hasMoreContent)")
+>>>>>>> Stashed changes
     }
     
     @MainActor
@@ -97,11 +116,14 @@ class FYPViewModel: ObservableObject {
             if hasMoreContent && videos.count > maxBufferSize {
                 print(" [FYPViewModel] Starting cleanup")
                 cleanupOldVideos()
+<<<<<<< Updated upstream
             }
             
         } catch {
             print(" [FYPViewModel] Error loading more videos: \(error)")
             self.error = error.localizedDescription
+=======
+>>>>>>> Stashed changes
         }
         
         isLoadingMore = false
@@ -154,7 +176,8 @@ class FYPViewModel: ObservableObject {
 }
 
 struct FYPView: View {
-    @StateObject private var viewModel = FYPViewModel()
+    // Use regular property instead of @StateObject with @Observable
+    private let viewModel = FYPViewModel()
     
     var body: some View {
         NavigationStack {

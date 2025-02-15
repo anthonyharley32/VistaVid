@@ -172,7 +172,7 @@ final class VideoViewModel: ObservableObject {
     // MARK: - Video Upload Methods
     
     /// Uploads a new video
-    func uploadVideo(videoURL: URL, description: String, algorithmTags: [String], communityId: String? = nil) async throws {
+    func uploadVideo(videoURL: URL, description: String, algorithmTags: [String], communityId: String? = nil) async throws -> String {
         debugLog("📤 Starting video upload process")
         
         // Check authentication
@@ -283,6 +283,8 @@ final class VideoViewModel: ObservableObject {
             // After successful upload, refresh the feed
             debugLog("🔄 Refreshing video feed after upload")
             await fetchInitialVideos()
+            
+            return videoId
             
         } catch {
             debugLog("❌ Error uploading video: \(error)")
@@ -818,6 +820,29 @@ final class VideoViewModel: ObservableObject {
             debugLog("✅ Successfully incremented view count")
         } catch {
             debugLog("❌ Error incrementing view count: \(error)")
+            throw error
+        }
+    }
+    
+    // MARK: - Video Status Methods
+    
+    /// Fetches the current status of a video
+    func getVideoStatus(_ videoId: String) async throws -> (status: String, error: String?) {
+        debugLog("🔍 Checking status for video: \(videoId)")
+        
+        do {
+            let doc = try await db.collection("videos").document(videoId).getDocument()
+            guard let data = doc.data() else {
+                throw NSError(domain: "VideoStatus", code: 404, userInfo: [NSLocalizedDescriptionKey: "Video not found"])
+            }
+            
+            let status = data["status"] as? String ?? "unknown"
+            let error = data["error"] as? String
+            
+            debugLog("📊 Video status: \(status)")
+            return (status: status, error: error)
+        } catch {
+            debugLog("❌ Error fetching video status: \(error)")
             throw error
         }
     }
