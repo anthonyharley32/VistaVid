@@ -79,7 +79,7 @@ import Combine
             }
             
             // Improve efficiency by reducing resolution
-            captureSession.sessionPreset = .low
+            captureSession.sessionPreset = .medium
         } catch {
             print("❌ Error setting up camera: \(error.localizedDescription)")
         }
@@ -190,11 +190,11 @@ import Combine
         print("👁️ Left EAR: \(leftEAR), Right EAR: \(rightEAR)")
         
         // Constants for detection
-        let blinkThreshold: Float = 0.04
+        let blinkThreshold: Float = 0.045
         let winkThreshold: Float = 0.10
         let normalStateThreshold: Float = 0.20
         let eyeRatioDifferenceMax: Float = 0.85
-        let blinkEyeDifferenceMax: Float = 0.03
+        let blinkEyeDifferenceMax: Float = 0.02
         
         // Calculate ratios between eyes
         let leftToRightRatio = leftEAR / rightEAR
